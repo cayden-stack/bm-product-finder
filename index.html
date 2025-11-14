@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioMatrix Product Finder</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <h1>BioMatrix Product Finder</h1>
+        <div class="header-icons">
+            <button id="theme-toggle-btn" class="theme-btn">☀️</button>
+        </div>
+        <p>Searching [https://www.pipettesupplies.com]</p>
+        <input type="text" id="search-bar" placeholder="Search by name, ID, or tag (e.g., 'blue tips')">
+    </header>
+
+<div class="page-container">
+        
+        <aside id="sidebar">
+            <h2>Recently Viewed</h2>
+            <ul id="recent-list">
+                </ul>
+        </aside>
+
+        <div class="main-content">
+
+            <p id="result-count"></p>
+
+            <div class="view-controls">
+                <button id="sidebar-toggle-btn" class="view-btn">Recent</button>
+                <div class="sort-controls">
+                    <label for="sort-select">Sort by:</label>
+                    <select id="sort-select" class="view-btn">
+                        <option value="relevance">Relevance</option>
+                        <option value="name-az">Name (A-Z)</option>
+                        <option value="name-za">Name (Z-A)</option>
+                    </select>
+                </div>
+                <div class="view-toggle-group">
+                    <button id="grid-view-btn" class="view-btn active">Grid</button>
+                    <button id="list-view-btn" class="view-btn">List</button>
+                </div>
+            </div>
+            <main id="results-container"></main>
+        </div>
+
+    </div>
+    
+    <button id="scroll-top-btn" class="theme-btn"></button>
+    
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
+    <script src="app.js"></script>
+
+</body>
+</html>
