@@ -30,7 +30,7 @@ export default async function handler(request, response) {
     // --- HANDLE GET REQUEST (RETRIEVE FAVORITES) ---
     if (request.method === 'GET') {
       const result = await client.query(
-        'SELECT product_id, saved_at FROM public.favorites WHERE user_id = $1 ORDER BY saved_at DESC',
+        'SELECT product_id, saved_at FROM public."favorites" WHERE user_id = $1 ORDER BY saved_at DESC',
         [TEMP_USER_ID]
       );
       
@@ -47,7 +47,7 @@ export default async function handler(request, response) {
 
       // Insert or Update logic: Insert new favorite for the TEMP_USER_ID
       const result = await client.query(
-        'INSERT INTO public.favorites (user_id, product_id, saved_at) VALUES ($1, $2, NOW()) RETURNING *',
+        'INSERT INTO public."favorites" (user_id, product_id, saved_at) VALUES ($1, $2, NOW()) RETURNING *',
         [TEMP_USER_ID, product_id]
       );
 
