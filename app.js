@@ -1,9 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// --- Supabase Setup (Public Keys for Client-Side) ---
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL; 
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; 
 
+// NOTE: In a real environment, you would handle the case where these are undefined.
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -17,17 +20,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridViewBtn = document.getElementById('grid-view-btn');
     const listViewBtn = document.getElementById('list-view-btn');
     const recentList = document.getElementById('recent-list');
+    
     const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
     const pageContainer = document.querySelector('.page-container');
     const sortSelect = document.getElementById('sort-select');
     const scrollTopBtn = document.getElementById('scroll-top-btn');
-    
-    // --- New Element ---
     const resultCountEl = document.getElementById('result-count');
-    // --- End New Element ---
 
     const MAX_RECENT = 5;
 
+    // --- Lazy Loading Observer ---
     const observerOptions = {
         root: null,
         rootMargin: '0px',
@@ -47,10 +49,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }, observerOptions);
 
     
+    // --- Initial Setup ---
     const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
     setTheme(isDarkMode);
     loadRecentItems();
 
+    // --- Event Listeners ---
     themeToggle.addEventListener('click', () => {
         const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
         setTheme(!isDarkMode);
@@ -108,10 +112,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.documentElement.scrollTop = 0;
     });
 
-
+    // --- Data Fetching ---
     fetch('products.json')
         .then(response => response.json())
-        .then(data => {
+        .then(async data => {
             productData = data;
             
             const options = {
@@ -126,6 +130,18 @@ document.addEventListener('DOMContentLoaded', () => {
             };
     
             fuse = new Fuse(productData, options);
+
+            // --- NEW: Fetch and Mark Favorites ---
+            // NOTE: This call is temporary and insecure; true Auth is needed for security
+            const favoritesList = await fetchFavorites();
+            const favoritedProductIds = new Set(favoritesList.map(f => f.product_id));
+
+            productData = productData.map(product => ({
+                ...product,
+                isFavorited: favoritedProductIds.has(product.id)
+            }));
+            // --- End NEW Logic ---
+
             updateDisplay();
         })
         .catch(error => {
@@ -133,6 +149,53 @@ document.addEventListener('DOMContentLoaded', () => {
             resultsContainer.innerHTML = "<p>Error loading product data. Please check console.</p>";
         });
 
+
+    // --- API Helper Functions ---
+    const API_BASE_URL = '/api/favorites';
+
+    async function fetchFavorites() {
+        try {
+            const response = await fetch(API_BASE_URL, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch favorites');
+            }
+
+            const data = await response.json();
+            return data.favorites;
+        } catch (error) {
+            console.error('Error fetching favorites:', error);
+            return [];
+        }
+    }
+
+    async function toggleFavorite(productId, isFavorited) {
+        // NOTE: This call currently uses a temporary hardcoded user ID on the backend
+        try {
+            const method = isFavorited ? 'DELETE' : 'POST';
+            const response = await fetch(API_BASE_URL, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product_id: productId })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to ${isFavorited ? 'delete' : 'save'} favorite.`);
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Error toggling favorite:', error);
+            return false;
+        }
+    }
+    // --- End API Helpers ---
+
+
+    // --- General Helper Functions ---
 
     function updateDisplay(query = '') {
         if (query.length === 0) {
@@ -250,7 +313,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // --- Add this line ---
         resultCountEl.textContent = `Found ${results.length} ${results.length === 1 ? 'match' : 'matches'}`;
     
         const cardsHTML = results.map(result => {
