@@ -1,7 +1,10 @@
+// --- Supabase Setup (Public Keys for Client-Side) ---
+// Note: These keys are defined in your index.html file
 const SUPABASE_URL = PUBLIC_SUPABASE_URL; 
 const SUPABASE_ANON_KEY = PUBLIC_SUPABASE_ANON_KEY; 
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// FIX: Access the global Supabase object explicitly via window.supabase
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -18,14 +21,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const recentList = document.getElementById('recent-list');
     
     const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
-    const pageContainer = document.querySelector('.page-container');
+    const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
     const sortSelect = document.getElementById('sort-select');
     const scrollTopBtn = document.getElementById('scroll-top-btn');
     const resultCountEl = document.getElementById('result-count');
 
     const MAX_RECENT = 5;
 
-    // --- Lazy Loading Observer ---
     const observerOptions = {
         root: null,
         rootMargin: '0px',
@@ -45,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }, observerOptions);
 
     
-    // --- Initial Setup ---
     const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
     setTheme(isDarkMode);
     loadRecentItems();
@@ -56,10 +59,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setTheme(!isDarkMode);
     });
 
-    sidebarToggleBtn.addEventListener('click', () => {
-        pageContainer.classList.toggle('sidebar-open');
-        sidebarToggleBtn.classList.toggle('active');
-    });
+    // --- Sidebar Listeners ---
+    sidebarToggleBtn.addEventListener('click', toggleSidebar);
+    sidebarCloseBtn.addEventListener('click', toggleSidebar);
+    overlay.addEventListener('click', toggleSidebar);
 
     gridViewBtn.addEventListener('click', () => {
         resultsContainer.classList.remove('list-view');
@@ -127,8 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
             fuse = new Fuse(productData, options);
 
-            // --- NEW: Fetch and Mark Favorites ---
-            // NOTE: This call is temporary and insecure; true Auth is needed for security
+            // --- Fetch and Mark Favorites ---
             const favoritesList = await fetchFavorites();
             const favoritedProductIds = new Set(favoritesList.map(f => f.product_id));
 
@@ -136,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ...product,
                 isFavorited: favoritedProductIds.has(product.id)
             }));
-            // --- End NEW Logic ---
+            // --- End Fetch and Mark Favorites ---
 
             updateDisplay();
         })
@@ -157,6 +159,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
+                // If Vercel protection is active, this fails gracefully
+                if (response.status === 401 || response.status === 403) {
+                    console.warn("API returned 401/403. Assuming no favorites data without authentication.");
+                    return [];
+                }
                 throw new Error('Failed to fetch favorites');
             }
 
@@ -169,7 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function toggleFavorite(productId, isFavorited) {
-        // NOTE: This call currently uses a temporary hardcoded user ID on the backend
         try {
             const method = isFavorited ? 'DELETE' : 'POST';
             const response = await fetch(API_BASE_URL, {
@@ -191,7 +197,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- End API Helpers ---
 
 
-    // --- General Helper Functions ---
+    // --- Helper Functions ---
+    function toggleSidebar() {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('open');
+        sidebarToggleBtn.classList.toggle('active');
+    }
 
     function updateDisplay(query = '') {
         if (query.length === 0) {
