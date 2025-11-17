@@ -1,10 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-// --- Supabase Setup (Public Keys for Client-Side) ---
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL; 
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; 
+const SUPABASE_URL = import.meta.env.NEXT_PUBLIC_SUPABASE_URL; 
+const SUPABASE_ANON_KEY = import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; 
 
-// NOTE: In a real environment, you would handle the case where these are undefined.
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
