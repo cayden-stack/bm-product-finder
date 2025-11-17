@@ -3,10 +3,10 @@ import { Pool } from 'pg';
 const connectionString = process.env.POSTGRES_URL_NON_POOLING;
 
 const pool = new Pool({
-  connectionString,
-  ssl: {
-    rejectUnauthorized: false
-  }
+    connectionString: connectionString,
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
 export default async function handler(request, response) {
