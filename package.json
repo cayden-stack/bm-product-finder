@@ -1,0 +1,24 @@
+{
+  "name": "bm-product-finder",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cayden-stack/bm-product-finder.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/cayden-stack/bm-product-finder/issues"
+  },
+  "homepage": "https://github.com/cayden-stack/bm-product-finder#readme",
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}
