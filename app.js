@@ -1,12 +1,3 @@
-// --- Supabase Setup (Public Keys for Client-Side) ---
-// Note: These keys are defined in your index.html file
-const SUPABASE_URL = PUBLIC_SUPABASE_URL; 
-const SUPABASE_ANON_KEY = PUBLIC_SUPABASE_ANON_KEY; 
-
-// FIX: Access the global Supabase object explicitly via window.supabase
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-
 document.addEventListener('DOMContentLoaded', () => {
 
     let fuse;
@@ -21,9 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const recentList = document.getElementById('recent-list');
     
     const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
-    const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+    // Removed sidebarCloseBtn and overlay
     const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
     const sortSelect = document.getElementById('sort-select');
     const scrollTopBtn = document.getElementById('scroll-top-btn');
     const resultCountEl = document.getElementById('result-count');
@@ -59,10 +49,13 @@ document.addEventListener('DOMContentLoaded', () => {
         setTheme(!isDarkMode);
     });
 
-    // --- Sidebar Listeners ---
-    sidebarToggleBtn.addEventListener('click', toggleSidebar);
-    sidebarCloseBtn.addEventListener('click', toggleSidebar);
-    overlay.addEventListener('click', toggleSidebar);
+    // --- Sidebar Toggle Logic ---
+    sidebarToggleBtn.addEventListener('click', () => {
+        // We now toggle the class on the parent container and the button itself
+        const pageContainer = document.querySelector('.page-container');
+        pageContainer.classList.toggle('sidebar-open');
+        sidebarToggleBtn.classList.toggle('active');
+    });
 
     gridViewBtn.addEventListener('click', () => {
         resultsContainer.classList.remove('list-view');
@@ -130,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
             fuse = new Fuse(productData, options);
 
-            // --- Fetch and Mark Favorites ---
+            // Fetch and Mark Favorites (API call is safe, even if it fails)
             const favoritesList = await fetchFavorites();
             const favoritedProductIds = new Set(favoritesList.map(f => f.product_id));
 
@@ -138,7 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 ...product,
                 isFavorited: favoritedProductIds.has(product.id)
             }));
-            // --- End Fetch and Mark Favorites ---
 
             updateDisplay();
         })
@@ -159,9 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                // If Vercel protection is active, this fails gracefully
                 if (response.status === 401 || response.status === 403) {
-                    console.warn("API returned 401/403. Assuming no favorites data without authentication.");
                     return [];
                 }
                 throw new Error('Failed to fetch favorites');
@@ -197,12 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- End API Helpers ---
 
 
-    // --- Helper Functions ---
-    function toggleSidebar() {
-        sidebar.classList.toggle('open');
-        overlay.classList.toggle('open');
-        sidebarToggleBtn.classList.toggle('active');
-    }
+    // --- Core Display and Data Functions ---
 
     function updateDisplay(query = '') {
         if (query.length === 0) {
