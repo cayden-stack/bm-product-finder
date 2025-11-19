@@ -59,6 +59,7 @@ header p {
     text-decoration: none;
     color: var(--text-color);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative; /* Essential for positioning the star */
 }
 
 .product-card:hover {
@@ -217,18 +218,18 @@ body.dark-mode .view-btn.active {
     padding-left: 20px;
 }
 
-/* --- Layout & Sidebar (Offset / Push Style) --- */
+/* --- Layout & Sidebar --- */
 
 .page-container {
     display: flex;
     gap: 30px;
-    max-width: 1600px; /* Allows wider grid on large screens */
-    margin: 0 auto;    /* Centers the layout */
+    max-width: 1600px;
+    margin: 0 auto;
 }
 
 .main-content {
     flex-grow: 1;
-    min-width: 0; /* Essential for grid to shrink correctly */
+    min-width: 0; 
 }
 
 #sidebar {
@@ -243,7 +244,6 @@ body.dark-mode .view-btn.active {
     display: none; /* Hidden by default */
 }
 
-/* When sidebar-open is on parent, show the sidebar */
 .page-container.sidebar-open #sidebar {
     display: block;
 }
@@ -292,7 +292,7 @@ body.dark-mode .view-btn.active {
 #recent-list .recent-item-info {
     font-size: 14px;
     line-height: 1.4;
-    min-width: 0; /* Fixes text collapsing bug */
+    min-width: 0;
 }
 
 #recent-list .recent-item-info span {
@@ -349,7 +349,7 @@ body.dark-mode #recent-list .recent-item-img {
     
     background-color: var(--heading-color); 
     color: var(--card-bg); 
-    border: none; /* No border prevents pixelation */
+    border: none;
     box-shadow: 0 4px 10px var(--shadow-color);
     cursor: pointer;
     
@@ -360,7 +360,6 @@ body.dark-mode #recent-list .recent-item-img {
     justify-content: center;
 }
 
-/* Sharp SVG-like CSS arrow */
 #scroll-top-btn::before {
     content: '';
     width: 12px;
@@ -379,4 +378,39 @@ body.dark-mode #recent-list .recent-item-img {
 #scroll-top-btn.show {
     display: flex;
     opacity: 1; 
+}
+
+.favorite-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 10;
+    line-height: 1;
+    padding: 0;
+    transition: transform 0.2s ease;
+    
+    color: #ccc; 
+    -webkit-text-stroke: 1px #888;
+}
+
+.favorite-btn:hover {
+    transform: scale(1.2);
+}
+
+.favorite-btn.favorited {
+    color: #ffd700;
+    -webkit-text-stroke: 0; 
+    text-shadow: 0 0 2px rgba(0,0,0,0.3);
+}
+
+body.dark-mode .favorite-btn {
+    color: #555;
+    -webkit-text-stroke: 0;
+}
+body.dark-mode .favorite-btn.favorited {
+    color: #ffd700;
 }
