@@ -150,18 +150,59 @@ body.dark-mode mark {
     color: #2c2c2c;
 }
 
+/* --- View Controls Layout --- */
+
 .view-controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
-#result-count {
+/* CHANGED: Stacks Recent and Favorites buttons vertically */
+.left-controls {
+    display: flex;
+    flex-direction: column; /* Stack them */
+    gap: 5px; /* Small space between buttons */
+    align-items: flex-start;
+}
+
+.right-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Highlight the Favorites button when active */
+#favorites-filter-btn.active {
+    background-color: #ffd700;
+    color: #000;
+    border-color: #e6c200;
+    opacity: 1;
+}
+
+body.dark-mode #favorites-filter-btn.active {
+    background-color: #ffd700;
+    color: #000;
+}
+
+.sort-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sort-controls label {
     font-size: 14px;
-    color: var(--subtle-text-color);
-    margin: 0 0 10px 0;
-    text-align: right;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+#sort-select {
+    opacity: 1;
+    padding: 4px 8px;
 }
 
 .view-toggle-group {
@@ -180,6 +221,7 @@ body.dark-mode mark {
     cursor: pointer;
     opacity: 0.6;
     transition: opacity 0.2s, background-color 0.2s, color 0.2s;
+    white-space: nowrap; /* Prevents text from wrapping in small buttons */
 }
 
 .view-btn.active {
@@ -194,6 +236,15 @@ body.dark-mode .view-btn.active {
     background-color: #f1f1f1;
     border-color: #f1f1f1;
 }
+
+#result-count {
+    font-size: 14px;
+    color: var(--subtle-text-color);
+    margin: 0 0 10px 0;
+    text-align: right;
+}
+
+/* --- List View Styles --- */
 
 #results-container.list-view {
     grid-template-columns: 1fr;
@@ -218,7 +269,7 @@ body.dark-mode .view-btn.active {
     padding-left: 20px;
 }
 
-/* --- Layout & Sidebar --- */
+/* --- Layout & Sidebar (Offset Style) --- */
 
 .page-container {
     display: flex;
@@ -319,23 +370,6 @@ body.dark-mode #recent-list .recent-item-img {
     }
 }
 
-.sort-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.sort-controls label {
-    font-size: 14px;
-    font-weight: bold;
-    color: var(--text-color);
-}
-
-#sort-select {
-    opacity: 1;
-    padding: 4px 8px;
-}
-
 /* --- Scroll to Top Button --- */
 #scroll-top-btn {
     position: fixed;
@@ -349,7 +383,7 @@ body.dark-mode #recent-list .recent-item-img {
     
     background-color: var(--heading-color); 
     color: var(--card-bg); 
-    border: none;
+    border: none; 
     box-shadow: 0 4px 10px var(--shadow-color);
     cursor: pointer;
     
@@ -380,6 +414,7 @@ body.dark-mode #recent-list .recent-item-img {
     opacity: 1; 
 }
 
+/* --- Favorite Star Button (Clean) --- */
 .favorite-btn {
     position: absolute;
     top: 10px;
@@ -393,6 +428,7 @@ body.dark-mode #recent-list .recent-item-img {
     padding: 0;
     transition: transform 0.2s ease;
     
+    /* Default State (Empty Star) */
     color: #ccc; 
     -webkit-text-stroke: 1px #888;
 }
@@ -401,12 +437,14 @@ body.dark-mode #recent-list .recent-item-img {
     transform: scale(1.2);
 }
 
+/* Active State (Filled Yellow Star) */
 .favorite-btn.favorited {
     color: #ffd700;
-    -webkit-text-stroke: 0; 
+    -webkit-text-stroke: 0;
     text-shadow: 0 0 2px rgba(0,0,0,0.3);
 }
 
+/* Dark mode adjustments */
 body.dark-mode .favorite-btn {
     color: #555;
     -webkit-text-stroke: 0;
