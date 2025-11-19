@@ -12,13 +12,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let session = null; 
     let isLoginMode = true; 
     
-    // --- Elements ---
     const themeToggle = document.getElementById('theme-toggle-btn');
     const searchBar = document.getElementById('search-bar');
     const resultsContainer = document.getElementById('results-container');
     const gridViewBtn = document.getElementById('grid-view-btn');
     const listViewBtn = document.getElementById('list-view-btn');
     const recentList = document.getElementById('recent-list');
+    
     const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
     const pageContainer = document.querySelector('.page-container');
     const sortSelect = document.getElementById('sort-select');
@@ -39,12 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const MAX_RECENT = 5;
 
-    // --- Init ---
-    const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
-    setTheme(isDarkMode);
-    loadRecentItems();
-
-    // --- Observer ---
+    // --- Lazy Loading ---
     const observerOptions = { root: null, rootMargin: '0px', threshold: 0.1 };
     const lazyImageObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
@@ -58,21 +53,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, observerOptions);
 
-    // --- AUTH EVENT LISTENERS ---
-    
-    // Google Login Listener <-- NEW
+    // --- Init ---
+    const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
+    setTheme(isDarkMode);
+    loadRecentItems();
+
+    // --- GOOGLE AUTH LISTENER (Restored) ---
     if (googleAuthBtn) {
         googleAuthBtn.addEventListener('click', async () => {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: window.location.origin // Redirects back to your site
+                    redirectTo: window.location.origin
                 }
             });
             if (error) alert("Google Login Failed: " + error.message);
         });
     }
 
+    // --- Standard Auth Listeners ---
     if (authBtn) {
         authBtn.addEventListener('click', () => {
             if (session) {
@@ -355,9 +354,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isDark) { document.body.classList.add('dark-mode'); localStorage.setItem('darkMode', 'enabled'); if(themeToggle) themeToggle.innerHTML = '☀️'; } 
         else { document.body.classList.remove('dark-mode'); localStorage.setItem('darkMode', 'disabled'); if(themeToggle) themeToggle.innerHTML = '🌙'; }
     }
+    
     function loadRecentItems() {
         const items = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
-        if(!recentList) return;
+        if (!recentList) return;
         recentList.innerHTML = '';
         if (items.length === 0) { recentList.innerHTML = '<li>No recent items.</li>'; return; }
         items.forEach(item => {
@@ -366,6 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
             recentList.appendChild(li);
         });
     }
+    
     function addRecentItem(product) {
         let items = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
         items = items.filter(i => i.id !== product.id);
@@ -374,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('recentlyViewed', JSON.stringify(items));
         loadRecentItems();
     }
+
     function highlight(text, matches, key) {
         if (!matches) return text;
         const keyMatches = matches.find(m => m.key === key);

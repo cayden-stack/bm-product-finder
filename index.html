@@ -12,7 +12,7 @@
         <h1>BioMatrix Product Finder</h1>
         <div class="header-icons">
             <button id="auth-btn" class="theme-btn" style="width: auto; padding: 0 15px; font-size: 14px; font-weight: bold; border-radius: 5px;">Login</button>
-            <button id="theme-toggle-btn" class="theme-btn">🌙</button>
+            <button id="theme-toggle-btn" class="theme-btn">☀️</button>
         </div>
         <p>Searching pipettesupplies.com</p>
         <input type="text" id="search-bar" placeholder="Search by name, ID, or tag (e.g., 'blue tips')">
@@ -22,12 +22,10 @@
         
         <aside id="sidebar">
             <h2>Recently Viewed</h2>
-            <ul id="recent-list">
-                </ul>
+            <ul id="recent-list"></ul>
         </aside>
 
         <div class="main-content">
-
             <p id="result-count"></p>
 
             <div class="view-controls">
@@ -50,32 +48,34 @@
                     <button id="list-view-btn" class="view-btn">List</button>
                 </div>
             </div>
-
             <main id="results-container"></main> 
-
         </div>
-
     </div>
     
     <button id="scroll-top-btn" class="theme-btn"></button>
 
-<div class="modal-content">
+    <div id="auth-modal" class="modal">
+        <div class="modal-content">
             <span id="close-auth" class="close">&times;</span>
             <h2 id="auth-title">Login</h2>
-            
+
             <button id="google-auth-btn" class="google-btn">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" width="20">
                 Continue with Google
             </button>
             
-            <div class="divider"><span>OR</span></div>
+            <div class="divider" style="display: flex; align-items: center; margin: 15px 0; color: #777; font-size: 12px;">
+                <span style="flex: 1; border-bottom: 1px solid #eee;"></span>
+                <span style="padding: 0 10px;">OR</span>
+                <span style="flex: 1; border-bottom: 1px solid #eee;"></span>
+            </div>
 
             <input type="email" id="email" placeholder="Email" class="auth-input">
             <input type="password" id="password" placeholder="Password" class="auth-input">
             <button id="submit-auth" class="view-btn active" style="width:100%; margin-top:10px;">Login</button>
-            <p id="auth-message"></p>
             <p class="switch-auth">Need an account? <a href="#" id="switch-auth-mode">Sign Up</a></p>
         </div>
+    </div>
     
     <script>
         const PUBLIC_SUPABASE_URL = "https://mikdpurvhpzjmzsfzyei.supabase.co"; 
