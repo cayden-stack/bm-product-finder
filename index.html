@@ -59,17 +59,23 @@
     
     <button id="scroll-top-btn" class="theme-btn"></button>
 
-    <div id="auth-modal" class="modal">
-        <div class="modal-content">
+<div class="modal-content">
             <span id="close-auth" class="close">&times;</span>
             <h2 id="auth-title">Login</h2>
+            
+            <button id="google-auth-btn" class="google-btn">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" width="20">
+                Continue with Google
+            </button>
+            
+            <div class="divider"><span>OR</span></div>
+
             <input type="email" id="email" placeholder="Email" class="auth-input">
             <input type="password" id="password" placeholder="Password" class="auth-input">
             <button id="submit-auth" class="view-btn active" style="width:100%; margin-top:10px;">Login</button>
             <p id="auth-message"></p>
             <p class="switch-auth">Need an account? <a href="#" id="switch-auth-mode">Sign Up</a></p>
         </div>
-    </div>
     
     <script>
         const PUBLIC_SUPABASE_URL = "https://mikdpurvhpzjmzsfzyei.supabase.co"; 

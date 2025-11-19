@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const authModal = document.getElementById('auth-modal');
     const closeAuth = document.getElementById('close-auth');
     const submitAuth = document.getElementById('submit-auth');
+    const googleAuthBtn = document.getElementById('google-auth-btn'); // <-- NEW
     const emailInput = document.getElementById('email');
     const passInput = document.getElementById('password');
     const authTitle = document.getElementById('auth-title');
@@ -58,6 +59,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }, observerOptions);
 
     // --- AUTH EVENT LISTENERS ---
+    
+    // Google Login Listener <-- NEW
+    if (googleAuthBtn) {
+        googleAuthBtn.addEventListener('click', async () => {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin // Redirects back to your site
+                }
+            });
+            if (error) alert("Google Login Failed: " + error.message);
+        });
+    }
+
     if (authBtn) {
         authBtn.addEventListener('click', () => {
             if (session) {
@@ -239,7 +254,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const options = { includeScore: true, includeMatches: true, threshold: 0.4, keys: [{ name: 'name', weight: 2 }, { name: 'id', weight: 2 }, { name: 'tags', weight: 1 }] };
             fuse = new Fuse(productData, options);
 
-            // If already logged in, fetch favorites now
             if (session) {
                 const favoritesList = await fetchFavorites();
                 const favoritedProductIds = new Set(favoritesList.map(f => f.product_id));
@@ -311,8 +325,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (products.length === 0) { if (resultCountEl) resultCountEl.textContent = 'No matches found'; return; }
 
         if (resultCountEl) {
-            if (showingFavoritesOnly) resultCountEl.textContent = `Showing ${products.length} favorites`;
-            else if (isSearch) resultCountEl.textContent = `Found ${products.length} matches`;
+            if (showingFavoritesOnly) resultCountEl.textContent = `Showing ${products.length} favorite${products.length !== 1 ? 's' : ''}`;
+            else if (isSearch) resultCountEl.textContent = `Found ${products.length} match${products.length !== 1 ? 'es' : ''}`;
             else resultCountEl.textContent = `Showing ${products.length} products`;
         }
 
@@ -341,10 +355,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isDark) { document.body.classList.add('dark-mode'); localStorage.setItem('darkMode', 'enabled'); if(themeToggle) themeToggle.innerHTML = '☀️'; } 
         else { document.body.classList.remove('dark-mode'); localStorage.setItem('darkMode', 'disabled'); if(themeToggle) themeToggle.innerHTML = '🌙'; }
     }
-    
     function loadRecentItems() {
         const items = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
-        if (!recentList) return;
+        if(!recentList) return;
         recentList.innerHTML = '';
         if (items.length === 0) { recentList.innerHTML = '<li>No recent items.</li>'; return; }
         items.forEach(item => {
@@ -353,7 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
             recentList.appendChild(li);
         });
     }
-    
     function addRecentItem(product) {
         let items = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
         items = items.filter(i => i.id !== product.id);
@@ -362,7 +374,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('recentlyViewed', JSON.stringify(items));
         loadRecentItems();
     }
-
     function highlight(text, matches, key) {
         if (!matches) return text;
         const keyMatches = matches.find(m => m.key === key);

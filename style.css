@@ -489,3 +489,56 @@ body.dark-mode .favorite-btn.favorited {
     font-size: 14px;
     color: var(--text-color);
 }
+
+/* Google Auth Button */
+.google-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+    background-color: #fff;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 15px;
+    transition: background-color 0.2s;
+}
+
+.google-btn:hover {
+    background-color: #f5f5f5;
+}
+
+/* Dark Mode Google Button */
+body.dark-mode .google-btn {
+    background-color: #4285F4; /* Google Blue */
+    color: white;
+    border: none;
+}
+
+body.dark-mode .google-btn:hover {
+    background-color: #357ae8;
+}
+
+/* Divider */
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 15px 0;
+    color: var(--subtle-text-color);
+    font-size: 12px;
+}
+
+.divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.divider span {
+    padding: 0 10px;
+}
