@@ -13,7 +13,7 @@
         <div class="header-icons">
             <button id="theme-toggle-btn" class="theme-btn">☀️</button>
         </div>
-        <p>Searching [SupplierName.com]</p>
+        <p>Searching pipettesupplies.com</p>
         <input type="text" id="search-bar" placeholder="Search by name, ID, or tag (e.g., 'blue tips')">
     </header>
 
@@ -22,35 +22,38 @@
         <aside id="sidebar">
             <h2>Recently Viewed</h2>
             <ul id="recent-list">
-                
-            </ul>
+                </ul>
         </aside>
 
         <div class="main-content">
 
             <p id="result-count"></p>
 
-<div class="view-controls">
-    <div class="left-controls">
-        <button id="sidebar-toggle-btn" class="view-btn">Recent</button>
-        <button id="favorites-filter-btn" class="view-btn">Show Favorites</button>
-    </div>
+            <div class="view-controls">
+                <div class="left-controls">
+                    <button id="sidebar-toggle-btn" class="view-btn">Recent</button>
+                    <button id="favorites-filter-btn" class="view-btn">Show Favorites</button>
+                </div>
+            
+                <div class="right-controls">
+                    <div class="sort-controls">
+                        <label for="sort-select">Sort:</label>
+                        <select id="sort-select" class="view-btn">
+                            <option value="relevance">Relevance</option>
+                            <option value="name-az">Name (A-Z)</option>
+                            <option value="name-za">Name (Z-A)</option>
+                        </select>
+                    </div>
+                    <div class="view-toggle-group">
+                        <button id="grid-view-btn" class="view-btn active">Grid</button>
+                        <button id="list-view-btn" class="view-btn">List</button>
+                    </div>
+                </div>
+            </div>
 
-    <div class="right-controls">
-            <div class="sort-controls">
-                <label for="sort-select">Sort:</label>
-                <select id="sort-select" class="view-btn">
-                    <option value="relevance">Relevance</option>
-                    <option value="name-az">Name (A-Z)</option>
-                    <option value="name-za">Name (Z-A)</option>
-                </select>
-            </div>
-            <div class="view-toggle-group">
-                <button id="grid-view-btn" class="view-btn active">Grid</button>
-                <button id="list-view-btn" class="view-btn">List</button>
-            </div>
+            <main id="results-container"></main> 
+
         </div>
-    </div>
 
     </div>
     
