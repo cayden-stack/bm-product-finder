@@ -1,11 +1,18 @@
+// --- Supabase Setup ---
+const SUPABASE_URL = PUBLIC_SUPABASE_URL; 
+const SUPABASE_ANON_KEY = PUBLIC_SUPABASE_ANON_KEY; 
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 document.addEventListener('DOMContentLoaded', () => {
 
     let fuse;
     let productData = [];
     let currentSort = 'relevance';
     let showingFavoritesOnly = false;
+    let session = null; 
+    let isLoginMode = true; 
     
-    // --- Find Elements ---
+    // --- Elements ---
     const themeToggle = document.getElementById('theme-toggle-btn');
     const searchBar = document.getElementById('search-bar');
     const resultsContainer = document.getElementById('results-container');
@@ -19,9 +26,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultCountEl = document.getElementById('result-count');
     const favoritesFilterBtn = document.getElementById('favorites-filter-btn');
 
+    // --- Auth Elements ---
+    const authBtn = document.getElementById('auth-btn');
+    const authModal = document.getElementById('auth-modal');
+    const closeAuth = document.getElementById('close-auth');
+    const submitAuth = document.getElementById('submit-auth');
+    const emailInput = document.getElementById('email');
+    const passInput = document.getElementById('password');
+    const authTitle = document.getElementById('auth-title');
+    const switchAuthMode = document.getElementById('switch-auth-mode');
+
     const MAX_RECENT = 5;
 
-    // --- Lazy Loading Observer ---
+    // --- Init ---
+    const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
+    setTheme(isDarkMode);
+    loadRecentItems();
+
+    // --- Observer ---
     const observerOptions = { root: null, rootMargin: '0px', threshold: 0.1 };
     const lazyImageObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
@@ -35,13 +57,75 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, observerOptions);
 
-    // --- Init ---
-    const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
-    setTheme(isDarkMode);
-    loadRecentItems();
+    // --- AUTH EVENT LISTENERS ---
+    if (authBtn) {
+        authBtn.addEventListener('click', () => {
+            if (session) {
+                supabase.auth.signOut(); 
+            } else {
+                authModal.classList.add('show');
+            }
+        });
+    }
 
-    // --- Event Listeners (Wrapped in 'if' checks to prevent crashes) ---
-    
+    if (closeAuth) closeAuth.addEventListener('click', () => authModal.classList.remove('show'));
+
+    if (switchAuthMode) {
+        switchAuthMode.addEventListener('click', (e) => {
+            e.preventDefault();
+            isLoginMode = !isLoginMode;
+            authTitle.textContent = isLoginMode ? 'Login' : 'Sign Up';
+            submitAuth.textContent = isLoginMode ? 'Login' : 'Sign Up';
+            switchAuthMode.textContent = isLoginMode ? 'Need an account? Sign Up' : 'Have an account? Login';
+        });
+    }
+
+    if (submitAuth) {
+        submitAuth.addEventListener('click', async () => {
+            const email = emailInput.value;
+            const password = passInput.value;
+            let error;
+            submitAuth.textContent = "Loading...";
+
+            if (isLoginMode) {
+                const res = await supabase.auth.signInWithPassword({ email, password });
+                error = res.error;
+            } else {
+                const res = await supabase.auth.signUp({ email, password });
+                error = res.error;
+            }
+            submitAuth.textContent = isLoginMode ? 'Login' : 'Sign Up';
+
+            if (error) {
+                alert(error.message);
+            } else {
+                authModal.classList.remove('show');
+                if (!isLoginMode) alert("Check your email to confirm sign up!");
+            }
+        });
+    }
+
+    // Session Monitoring
+    supabase.auth.onAuthStateChange((event, _session) => {
+        session = _session;
+        if (authBtn) authBtn.textContent = session ? 'Logout' : 'Login';
+        
+        if (session && productData.length > 0) {
+            fetchFavorites().then(favoritesList => {
+                const favoritedProductIds = new Set(favoritesList.map(f => f.product_id));
+                productData.forEach(product => {
+                    product.isFavorited = favoritedProductIds.has(product.id);
+                });
+                updateDisplay(searchBar.value);
+            });
+        } else if (!session && productData.length > 0) {
+             productData.forEach(product => product.isFavorited = false);
+             updateDisplay(searchBar.value);
+        }
+    });
+
+
+    // --- APP EVENT LISTENERS ---
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
             const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
@@ -60,14 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
         favoritesFilterBtn.addEventListener('click', () => {
             showingFavoritesOnly = !showingFavoritesOnly;
             favoritesFilterBtn.classList.toggle('active');
-            
-            if (showingFavoritesOnly) {
-                favoritesFilterBtn.textContent = "Show All";
-            } else {
-                favoritesFilterBtn.textContent = "Show Favorites";
-            }
-            const query = searchBar ? searchBar.value : '';
-            updateDisplay(query);
+            favoritesFilterBtn.textContent = showingFavoritesOnly ? "Show All" : "Show Favorites";
+            updateDisplay(searchBar ? searchBar.value : '');
         });
     }
 
@@ -77,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
             gridViewBtn.classList.add('active');
             listViewBtn.classList.remove('active');
         });
-
         listViewBtn.addEventListener('click', () => {
             if (resultsContainer) resultsContainer.classList.add('list-view');
             listViewBtn.classList.add('active');
@@ -85,19 +162,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (searchBar) {
-        searchBar.addEventListener('input', (e) => {
-            updateDisplay(e.target.value);
-        });
-    }
-
-    if (sortSelect) {
-        sortSelect.addEventListener('change', (e) => {
-            currentSort = e.target.value;
-            const query = searchBar ? searchBar.value : '';
-            updateDisplay(query);
-        });
-    }
+    if (searchBar) searchBar.addEventListener('input', (e) => updateDisplay(e.target.value));
+    
+    if (sortSelect) sortSelect.addEventListener('change', (e) => {
+        currentSort = e.target.value;
+        updateDisplay(searchBar ? searchBar.value : '');
+    });
 
     if (scrollTopBtn) {
         scrollTopBtn.addEventListener('click', () => {
@@ -116,48 +186,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- Main Click Handler (Delegation) ---
+    // --- CLICK HANDLER ---
     if (resultsContainer) {
         resultsContainer.addEventListener('click', async (e) => {
-            // 1. Star Click
             const starBtn = e.target.closest('.favorite-btn');
             if (starBtn) {
-                e.preventDefault();
-                e.stopPropagation();
+                e.preventDefault(); e.stopPropagation();
+                
+                if (!session) {
+                    alert("Please log in to save favorites.");
+                    authModal.classList.add('show');
+                    return;
+                }
 
                 const productId = starBtn.dataset.productId;
                 const isFavorited = starBtn.dataset.favorited === 'true';
                 const newStatus = !isFavorited;
 
-                // Update UI
                 starBtn.classList.toggle('favorited');
                 starBtn.dataset.favorited = newStatus;
                 starBtn.innerHTML = newStatus ? '★' : '☆';
 
-                // Update Data Model
                 const product = productData.find(p => p.id === productId);
                 if (product) product.isFavorited = newStatus;
-
-                // Refresh view if we are filtering by favorites and just un-favorited something
-                if (showingFavoritesOnly && !newStatus && searchBar) {
-                    updateDisplay(searchBar.value);
-                }
-
-                // API Call
-                const success = await toggleFavorite(productId, isFavorited);
                 
+                if (showingFavoritesOnly && !newStatus) updateDisplay(searchBar.value);
+
+                const success = await toggleFavorite(productId, isFavorited);
                 if (!success) {
-                    // Revert if API fails
                     starBtn.classList.toggle('favorited');
                     starBtn.dataset.favorited = isFavorited;
-                    starBtn.innerHTML = isFavorited ? '★' : '☆';
                     if (product) product.isFavorited = isFavorited;
                     alert("Error saving favorite");
                 }
                 return;
             }
 
-            // 2. Card Click (Recent Items)
             const card = e.target.closest('.product-card');
             if (card) {
                 const productId = card.dataset.id;
@@ -172,192 +236,130 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(response => response.json())
         .then(async data => {
             productData = data;
-            
-            const options = {
-                includeScore: true,
-                includeMatches: true, 
-                threshold: 0.4, 
-                keys: [
-                    { name: 'name', weight: 2 },
-                    { name: 'id', weight: 2 },
-                    { name: 'tags', weight: 1 }
-                ]
-            };
-    
+            const options = { includeScore: true, includeMatches: true, threshold: 0.4, keys: [{ name: 'name', weight: 2 }, { name: 'id', weight: 2 }, { name: 'tags', weight: 1 }] };
             fuse = new Fuse(productData, options);
 
-            // Safe fetch for favorites
-            const favoritesList = await fetchFavorites();
-            const favoritedProductIds = new Set(favoritesList.map(f => f.product_id));
-
-            productData = productData.map(product => ({
-                ...product,
-                isFavorited: favoritedProductIds.has(product.id)
-            }));
+            // If already logged in, fetch favorites now
+            if (session) {
+                const favoritesList = await fetchFavorites();
+                const favoritedProductIds = new Set(favoritesList.map(f => f.product_id));
+                productData = productData.map(p => ({ ...p, isFavorited: favoritedProductIds.has(p.id) }));
+            } else {
+                productData = productData.map(p => ({ ...p, isFavorited: false }));
+            }
 
             updateDisplay();
         })
-        .catch(error => {
-            console.error("Error fetching product data:", error);
-            if (resultsContainer) resultsContainer.innerHTML = "<p>Error loading product data.</p>";
-        });
+        .catch(error => console.error(error));
 
 
     // --- API Helpers ---
     const API_BASE_URL = '/api/favorites';
 
     async function fetchFavorites() {
+        if (!session) return [];
         try {
-            const response = await fetch(API_BASE_URL, { method: 'GET' });
+            const response = await fetch(API_BASE_URL, {
+                method: 'GET',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}` 
+                },
+            });
             if (!response.ok) return [];
             const data = await response.json();
             return data.favorites || [];
-        } catch (error) {
-            return [];
-        }
+        } catch (error) { return []; }
     }
 
     async function toggleFavorite(productId, isFavorited) {
+        if (!session) return false;
         try {
             const method = isFavorited ? 'DELETE' : 'POST';
             const response = await fetch(API_BASE_URL, {
                 method: method,
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
                 body: JSON.stringify({ product_id: productId })
             });
             return response.ok;
-        } catch (error) {
-            return false;
-        }
+        } catch (error) { return false; }
     }
 
     // --- Display Functions ---
-
     function updateDisplay(query = '') {
         let results;
+        if (query.length === 0) results = productData;
+        else results = fuse.search(query).map(r => { r.item._matches = r.matches; r.item._score = r.score; return r.item; });
 
-        if (query.length === 0) {
-            results = productData;
-        } else {
-            results = fuse.search(query).map(result => {
-                const item = result.item;
-                item._matches = result.matches;
-                item._score = result.score;
-                return item;
-            });
-        }
-
-        if (showingFavoritesOnly) {
-            results = results.filter(p => p.isFavorited);
-        }
-
+        if (showingFavoritesOnly) results = results.filter(p => p.isFavorited);
         results = sortProducts(results, currentSort);
         displayProducts(results, query.length > 0);
     }
 
     function sortProducts(array, method) {
-        if (method === 'name-az') {
-            return array.sort((a, b) => a.name.localeCompare(b.name));
-        } else if (method === 'name-za') {
-            return array.sort((a, b) => b.name.localeCompare(a.name));
-        }
+        if (method === 'name-az') return array.sort((a, b) => a.name.localeCompare(b.name));
+        if (method === 'name-za') return array.sort((a, b) => b.name.localeCompare(a.name));
         return array;
     }
 
     function displayProducts(products, isSearch) {
         if (!resultsContainer) return;
         resultsContainer.innerHTML = '';
-        
-        if (products.length === 0) {
-            if (resultCountEl) resultCountEl.textContent = 'No matches found';
-            return;
-        }
+        if (products.length === 0) { if (resultCountEl) resultCountEl.textContent = 'No matches found'; return; }
 
         if (resultCountEl) {
-            if (showingFavoritesOnly) {
-                resultCountEl.textContent = `Showing ${products.length} favorite${products.length !== 1 ? 's' : ''}`;
-            } else if (isSearch) {
-                resultCountEl.textContent = `Found ${products.length} match${products.length !== 1 ? 'es' : ''}`;
-            } else {
-                resultCountEl.textContent = `Showing ${products.length} products`;
-            }
+            if (showingFavoritesOnly) resultCountEl.textContent = `Showing ${products.length} favorites`;
+            else if (isSearch) resultCountEl.textContent = `Found ${products.length} matches`;
+            else resultCountEl.textContent = `Showing ${products.length} products`;
         }
 
         const cardsHTML = products.map(product => {
             let displayName = product.name;
             let displayId = product.id;
-            
             if (isSearch && product._score < 0.1 && !showingFavoritesOnly) {
                 displayName = highlight(product.name, product._matches, 'name');
                 displayId = highlight(product.id, product._matches, 'id');
             }
-
             const starIcon = product.isFavorited ? '★' : '☆';
             const favClass = product.isFavorited ? 'favorited' : '';
 
-            return `
-                <a href="${product.link}" target="_blank" class="product-card" data-id="${product.id}">
-                    <button class="favorite-btn ${favClass}" 
-                            data-product-id="${product.id}" 
-                            data-favorited="${product.isFavorited}">
-                        ${starIcon}
-                    </button>
-                    <img data-src="${product.image_url}" alt="${product.name}" class="lazy-load">
-                    <div class="product-card-info">
-                        <h3>${displayName}</h3>
-                        <p>ID: ${displayId}</p>
-                    </div>
-                </a>
-            `;
+            return `<a href="${product.link}" target="_blank" class="product-card" data-id="${product.id}">
+                <button class="favorite-btn ${favClass}" data-product-id="${product.id}" data-favorited="${product.isFavorited}">${starIcon}</button>
+                <img data-src="${product.image_url}" alt="${product.name}" class="lazy-load">
+                <div class="product-card-info"><h3>${displayName}</h3><p>ID: ${displayId}</p></div>
+            </a>`;
         });
-        
         resultsContainer.innerHTML = cardsHTML.join('');
-        
         const images = resultsContainer.querySelectorAll('img.lazy-load');
         images.forEach(img => lazyImageObserver.observe(img));
     }
 
     function setTheme(isDark) {
-        if (isDark) {
-            document.body.classList.add('dark-mode');
-            localStorage.setItem('darkMode', 'enabled');
-            if (themeToggle) themeToggle.innerHTML = '🌙';
-        } else {
-            document.body.classList.remove('dark-mode');
-            localStorage.setItem('darkMode', 'disabled');
-            if (themeToggle) themeToggle.innerHTML = '☀️';
-        }
+        if (isDark) { document.body.classList.add('dark-mode'); localStorage.setItem('darkMode', 'enabled'); if(themeToggle) themeToggle.innerHTML = '☀️'; } 
+        else { document.body.classList.remove('dark-mode'); localStorage.setItem('darkMode', 'disabled'); if(themeToggle) themeToggle.innerHTML = '🌙'; }
     }
-
+    
     function loadRecentItems() {
-        const recentItems = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+        const items = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
         if (!recentList) return;
         recentList.innerHTML = '';
-        if (recentItems.length === 0) {
-            recentList.innerHTML = '<li>No recent items.</li>';
-            return;
-        }
-        recentItems.forEach(item => {
+        if (items.length === 0) { recentList.innerHTML = '<li>No recent items.</li>'; return; }
+        items.forEach(item => {
             const li = document.createElement('li');
-            li.innerHTML = `
-                <a href="${item.link}" target="_blank">
-                    <img src="${item.image_url}" alt="${item.name}" class="recent-item-img">
-                    <div class="recent-item-info">
-                        ${item.name}
-                        <span>ID: ${item.id}</span>
-                    </div>
-                </a>
-            `;
+            li.innerHTML = `<a href="${item.link}" target="_blank"><img src="${item.image_url}" alt="${item.name}" class="recent-item-img"><div class="recent-item-info">${item.name}<span>ID: ${item.id}</span></div></a>`;
             recentList.appendChild(li);
         });
     }
     
     function addRecentItem(product) {
-        let recentItems = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
-        recentItems = recentItems.filter(item => item.id !== product.id);
-        recentItems.unshift({id: product.id, name: product.name, link: product.link, image_url: product.image_url});
-        recentItems = recentItems.slice(0, MAX_RECENT);
-        localStorage.setItem('recentlyViewed', JSON.stringify(recentItems));
+        let items = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+        items = items.filter(i => i.id !== product.id);
+        items.unshift({id: product.id, name: product.name, link: product.link, image_url: product.image_url});
+        items = items.slice(0, MAX_RECENT);
+        localStorage.setItem('recentlyViewed', JSON.stringify(items));
         loadRecentItems();
     }
 
