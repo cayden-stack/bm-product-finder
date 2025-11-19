@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSort = 'relevance';
     let showingFavoritesOnly = false;
     
+    // --- Find Elements ---
     const themeToggle = document.getElementById('theme-toggle-btn');
     const searchBar = document.getElementById('search-bar');
     const resultsContainer = document.getElementById('results-container');
@@ -16,11 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortSelect = document.getElementById('sort-select');
     const scrollTopBtn = document.getElementById('scroll-top-btn');
     const resultCountEl = document.getElementById('result-count');
-    
     const favoritesFilterBtn = document.getElementById('favorites-filter-btn');
 
     const MAX_RECENT = 5;
 
+    // --- Lazy Loading Observer ---
     const observerOptions = { root: null, rootMargin: '0px', threshold: 0.1 };
     const lazyImageObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
@@ -34,109 +35,139 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, observerOptions);
 
-    
+    // --- Init ---
     const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
     setTheme(isDarkMode);
     loadRecentItems();
 
-    themeToggle.addEventListener('click', () => {
-        const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
-        setTheme(!isDarkMode);
-    });
+    // --- Event Listeners (Wrapped in 'if' checks to prevent crashes) ---
+    
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
+            setTheme(!isDarkMode);
+        });
+    }
 
-    sidebarToggleBtn.addEventListener('click', () => {
-        pageContainer.classList.toggle('sidebar-open');
-        sidebarToggleBtn.classList.toggle('active');
-    });
+    if (sidebarToggleBtn) {
+        sidebarToggleBtn.addEventListener('click', () => {
+            if (pageContainer) pageContainer.classList.toggle('sidebar-open');
+            sidebarToggleBtn.classList.toggle('active');
+        });
+    }
 
-    favoritesFilterBtn.addEventListener('click', () => {
-        showingFavoritesOnly = !showingFavoritesOnly;
-        favoritesFilterBtn.classList.toggle('active');
-        
-        if (showingFavoritesOnly) {
-            favoritesFilterBtn.textContent = "Show All";
-        } else {
-            favoritesFilterBtn.textContent = "Show Favorites";
-        }
-
-        updateDisplay(searchBar.value);
-    });
-
-    gridViewBtn.addEventListener('click', () => {
-        resultsContainer.classList.remove('list-view');
-        gridViewBtn.classList.add('active');
-        listViewBtn.classList.remove('active');
-    });
-
-    listViewBtn.addEventListener('click', () => {
-        resultsContainer.classList.add('list-view');
-        listViewBtn.classList.add('active');
-        gridViewBtn.classList.remove('active');
-    });
-
-    searchBar.addEventListener('input', (e) => {
-        updateDisplay(e.target.value);
-    });
-
-    resultsContainer.addEventListener('click', async (e) => {
-
-        const starBtn = e.target.closest('.favorite-btn');
-        if (starBtn) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const productId = starBtn.dataset.productId;
-            const isFavorited = starBtn.dataset.favorited === 'true';
-            const newStatus = !isFavorited;
-
-            starBtn.classList.toggle('favorited');
-            starBtn.dataset.favorited = newStatus;
-            starBtn.innerHTML = newStatus ? '★' : '☆';
-
-            const product = productData.find(p => p.id === productId);
-            if (product) product.isFavorited = newStatus;
-
-            if (showingFavoritesOnly && !newStatus) {
-                updateDisplay(searchBar.value);
+    if (favoritesFilterBtn) {
+        favoritesFilterBtn.addEventListener('click', () => {
+            showingFavoritesOnly = !showingFavoritesOnly;
+            favoritesFilterBtn.classList.toggle('active');
+            
+            if (showingFavoritesOnly) {
+                favoritesFilterBtn.textContent = "Show All";
+            } else {
+                favoritesFilterBtn.textContent = "Show Favorites";
             }
+            const query = searchBar ? searchBar.value : '';
+            updateDisplay(query);
+        });
+    }
 
-            const success = await toggleFavorite(productId, isFavorited);
-            if (!success) {
-                starBtn.classList.toggle('favorited');
-                starBtn.dataset.favorited = isFavorited;
-                starBtn.innerHTML = isFavorited ? '★' : '☆';
-                if (product) product.isFavorited = isFavorited;
-                alert("Failed to save favorite.");
-            }
-            return;
-        }
+    if (gridViewBtn && listViewBtn) {
+        gridViewBtn.addEventListener('click', () => {
+            if (resultsContainer) resultsContainer.classList.remove('list-view');
+            gridViewBtn.classList.add('active');
+            listViewBtn.classList.remove('active');
+        });
 
-        const card = e.target.closest('.product-card');
-        if (card) {
-            const productId = card.dataset.id;
-            const product = productData.find(p => p.id === productId);
-            if (product) addRecentItem(product);
-        }
-    });
+        listViewBtn.addEventListener('click', () => {
+            if (resultsContainer) resultsContainer.classList.add('list-view');
+            listViewBtn.classList.add('active');
+            gridViewBtn.classList.remove('active');
+        });
+    }
 
-    sortSelect.addEventListener('change', (e) => {
-        currentSort = e.target.value;
-        updateDisplay(searchBar.value);
-    });
+    if (searchBar) {
+        searchBar.addEventListener('input', (e) => {
+            updateDisplay(e.target.value);
+        });
+    }
+
+    if (sortSelect) {
+        sortSelect.addEventListener('change', (e) => {
+            currentSort = e.target.value;
+            const query = searchBar ? searchBar.value : '';
+            updateDisplay(query);
+        });
+    }
+
+    if (scrollTopBtn) {
+        scrollTopBtn.addEventListener('click', () => {
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+        });
+    }
 
     window.onscroll = () => {
-        if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
-            scrollTopBtn.classList.add('show');
-        } else {
-            scrollTopBtn.classList.remove('show');
+        if (scrollTopBtn) {
+            if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+                scrollTopBtn.classList.add('show');
+            } else {
+                scrollTopBtn.classList.remove('show');
+            }
         }
     };
 
-    scrollTopBtn.addEventListener('click', () => {
-        document.body.scrollTop = 0;
-        document.documentElement.scrollTop = 0;
-    });
+    // --- Main Click Handler (Delegation) ---
+    if (resultsContainer) {
+        resultsContainer.addEventListener('click', async (e) => {
+            // 1. Star Click
+            const starBtn = e.target.closest('.favorite-btn');
+            if (starBtn) {
+                e.preventDefault();
+                e.stopPropagation();
 
+                const productId = starBtn.dataset.productId;
+                const isFavorited = starBtn.dataset.favorited === 'true';
+                const newStatus = !isFavorited;
+
+                // Update UI
+                starBtn.classList.toggle('favorited');
+                starBtn.dataset.favorited = newStatus;
+                starBtn.innerHTML = newStatus ? '★' : '☆';
+
+                // Update Data Model
+                const product = productData.find(p => p.id === productId);
+                if (product) product.isFavorited = newStatus;
+
+                // Refresh view if we are filtering by favorites and just un-favorited something
+                if (showingFavoritesOnly && !newStatus && searchBar) {
+                    updateDisplay(searchBar.value);
+                }
+
+                // API Call
+                const success = await toggleFavorite(productId, isFavorited);
+                
+                if (!success) {
+                    // Revert if API fails
+                    starBtn.classList.toggle('favorited');
+                    starBtn.dataset.favorited = isFavorited;
+                    starBtn.innerHTML = isFavorited ? '★' : '☆';
+                    if (product) product.isFavorited = isFavorited;
+                    alert("Error saving favorite");
+                }
+                return;
+            }
+
+            // 2. Card Click (Recent Items)
+            const card = e.target.closest('.product-card');
+            if (card) {
+                const productId = card.dataset.id;
+                const product = productData.find(p => p.id === productId);
+                if (product) addRecentItem(product);
+            }
+        });
+    }
+
+    // --- Data Fetching ---
     fetch('products.json')
         .then(response => response.json())
         .then(async data => {
@@ -155,6 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
             fuse = new Fuse(productData, options);
 
+            // Safe fetch for favorites
             const favoritesList = await fetchFavorites();
             const favoritedProductIds = new Set(favoritesList.map(f => f.product_id));
 
@@ -167,10 +199,11 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(error => {
             console.error("Error fetching product data:", error);
-            resultsContainer.innerHTML = "<p>Error loading product data. Please check console.</p>";
+            if (resultsContainer) resultsContainer.innerHTML = "<p>Error loading product data.</p>";
         });
 
 
+    // --- API Helpers ---
     const API_BASE_URL = '/api/favorites';
 
     async function fetchFavorites() {
@@ -197,6 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return false;
         }
     }
+
+    // --- Display Functions ---
 
     function updateDisplay(query = '') {
         let results;
@@ -230,19 +265,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displayProducts(products, isSearch) {
+        if (!resultsContainer) return;
         resultsContainer.innerHTML = '';
         
         if (products.length === 0) {
-            resultCountEl.textContent = 'No matches found';
+            if (resultCountEl) resultCountEl.textContent = 'No matches found';
             return;
         }
 
-        if (showingFavoritesOnly) {
-            resultCountEl.textContent = `Showing ${products.length} favorite${products.length !== 1 ? 's' : ''}`;
-        } else if (isSearch) {
-            resultCountEl.textContent = `Found ${products.length} match${products.length !== 1 ? 'es' : ''}`;
-        } else {
-            resultCountEl.textContent = `Showing ${products.length} products`;
+        if (resultCountEl) {
+            if (showingFavoritesOnly) {
+                resultCountEl.textContent = `Showing ${products.length} favorite${products.length !== 1 ? 's' : ''}`;
+            } else if (isSearch) {
+                resultCountEl.textContent = `Found ${products.length} match${products.length !== 1 ? 'es' : ''}`;
+            } else {
+                resultCountEl.textContent = `Showing ${products.length} products`;
+            }
         }
 
         const cardsHTML = products.map(product => {
@@ -283,16 +321,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isDark) {
             document.body.classList.add('dark-mode');
             localStorage.setItem('darkMode', 'enabled');
-            themeToggle.innerHTML = '🌙';
+            if (themeToggle) themeToggle.innerHTML = '🌙';
         } else {
             document.body.classList.remove('dark-mode');
             localStorage.setItem('darkMode', 'disabled');
-            themeToggle.innerHTML = '☀️';
+            if (themeToggle) themeToggle.innerHTML = '☀️';
         }
     }
 
     function loadRecentItems() {
         const recentItems = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+        if (!recentList) return;
         recentList.innerHTML = '';
         if (recentItems.length === 0) {
             recentList.innerHTML = '<li>No recent items.</li>';
