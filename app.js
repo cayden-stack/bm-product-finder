@@ -1,3 +1,4 @@
+const SUPABASE_URL = "https://[YOUR_PROJECT_ID].supabase.co";
 document.addEventListener('DOMContentLoaded', () => {
 
     let fuse;
@@ -12,8 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const recentList = document.getElementById('recent-list');
     
     const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
-    // Removed sidebarCloseBtn and overlay
-    const sidebar = document.getElementById('sidebar');
+    const pageContainer = document.querySelector('.page-container');
     const sortSelect = document.getElementById('sort-select');
     const scrollTopBtn = document.getElementById('scroll-top-btn');
     const resultCountEl = document.getElementById('result-count');
@@ -43,16 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setTheme(isDarkMode);
     loadRecentItems();
 
-    // --- Event Listeners ---
     themeToggle.addEventListener('click', () => {
         const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
         setTheme(!isDarkMode);
     });
 
-    // --- Sidebar Toggle Logic ---
     sidebarToggleBtn.addEventListener('click', () => {
-        // We now toggle the class on the parent container and the button itself
-        const pageContainer = document.querySelector('.page-container');
         pageContainer.classList.toggle('sidebar-open');
         sidebarToggleBtn.classList.toggle('active');
     });
@@ -74,7 +70,29 @@ document.addEventListener('DOMContentLoaded', () => {
         updateDisplay(query);
     });
 
-    resultsContainer.addEventListener('click', (e) => {
+    resultsContainer.addEventListener('click', async (e) => {
+        const starBtn = e.target.closest('.favorite-btn');
+        if (starBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const productId = starBtn.dataset.productId;
+            const isFavorited = starBtn.dataset.favorited === 'true';
+
+            starBtn.classList.toggle('favorited');
+            starBtn.dataset.favorited = !isFavorited;
+            starBtn.innerHTML = !isFavorited ? '★' : '☆';
+
+            const success = await toggleFavorite(productId, isFavorited);
+
+            if (!success) {
+                starBtn.classList.toggle('favorited');
+                starBtn.dataset.favorited = isFavorited;
+                alert("Failed to save favorite.");
+            }
+            return;
+        }
+
         const card = e.target.closest('.product-card');
         if (card) {
             const productId = card.dataset.id;
@@ -104,7 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.documentElement.scrollTop = 0;
     });
 
-    // --- Data Fetching ---
     fetch('products.json')
         .then(response => response.json())
         .then(async data => {
@@ -123,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
             fuse = new Fuse(productData, options);
 
-            // Fetch and Mark Favorites (API call is safe, even if it fails)
             const favoritesList = await fetchFavorites();
             const favoritedProductIds = new Set(favoritesList.map(f => f.product_id));
 
@@ -140,7 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
 
-    // --- API Helper Functions ---
     const API_BASE_URL = '/api/favorites';
 
     async function fetchFavorites() {
@@ -149,16 +164,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
             });
-
-            if (!response.ok) {
-                if (response.status === 401 || response.status === 403) {
-                    return [];
-                }
-                throw new Error('Failed to fetch favorites');
-            }
-
+            if (!response.ok) return [];
             const data = await response.json();
-            return data.favorites;
+            return data.favorites || [];
         } catch (error) {
             console.error('Error fetching favorites:', error);
             return [];
@@ -173,21 +181,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ product_id: productId })
             });
-            
-            if (!response.ok) {
-                throw new Error(`Failed to ${isFavorited ? 'delete' : 'save'} favorite.`);
-            }
-            
-            return true;
+            return response.ok;
         } catch (error) {
             console.error('Error toggling favorite:', error);
             return false;
         }
     }
-    // --- End API Helpers ---
-
-
-    // --- Core Display and Data Functions ---
 
     function updateDisplay(query = '') {
         if (query.length === 0) {
@@ -224,11 +223,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isDark) {
             document.body.classList.add('dark-mode');
             localStorage.setItem('darkMode', 'enabled');
-            themeToggle.innerHTML = '☀️';
+            themeToggle.innerHTML = '🌙';
         } else {
             document.body.classList.remove('dark-mode');
             localStorage.setItem('darkMode', 'disabled');
-            themeToggle.innerHTML = '🌙';
+            themeToggle.innerHTML = '☀️';
         }
     }
 
@@ -273,17 +272,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function highlight(text, matches, key) {
-        if (!matches) {
-            return text;
-        }
+        if (!matches) { return text; }
         const keyMatches = matches.find(m => m.key === key);
-        if (!keyMatches) {
-            return text;
-        }
+        if (!keyMatches) { return text; }
         const indices = keyMatches.indices;
-        if (!indices || indices.length === 0) {
-            return text;
-        }
+        if (!indices || indices.length === 0) { return text; }
         let highlightedText = "";
         let lastIndex = 0;
         indices.forEach(pair => {
@@ -299,7 +292,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function displayResults(results) {
         resultsContainer.innerHTML = '';
-        
         if (results.length === 0) {
             resultCountEl.textContent = 'No matches found';
             return;
@@ -317,6 +309,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
             return `
                 <a href="${product.link}" target="_blank" class="product-card" data-id="${product.id}">
+                    <button class="favorite-btn ${product.isFavorited ? 'favorited' : ''}" 
+                            data-product-id="${product.id}" 
+                            data-favorited="${product.isFavorited}">
+                        ★
+                    </button>
                     <img data-src="${product.image_url}" alt="${product.name}" class="lazy-load">
                     <div class="product-card-info">
                         <h3>${highlightedName}</h3>
@@ -337,6 +334,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const cardsHTML = products.map(product => {
             return `
                 <a href="${product.link}" target="_blank" class="product-card" data-id="${product.id}">
+                    <button class="favorite-btn ${product.isFavorited ? 'favorited' : ''}" 
+                            data-product-id="${product.id}" 
+                            data-favorited="${product.isFavorited}">
+                        ★
+                    </button>
                     <img data-src="${product.image_url}" alt="${product.name}" class="lazy-load">
                     <div class="product-card-info">
                         <h3>${product.name}</h3>

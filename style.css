@@ -5,7 +5,7 @@
     --heading-color: #0c2050;
     --shadow-color: rgba(0,0,0,0.08);
     --border-color: #eee;
-    --subtle-text-color: #777; /* NEW: Dark subtle text for light mode */
+    --subtle-text-color: #777;
 }
 
 body {
@@ -21,6 +21,8 @@ header {
     text-align: center;
     margin-bottom: 30px;
     position: relative;
+    max-width: 1200px;
+    margin: 0 auto 30px auto;
 }
 
 header h1 {
@@ -28,7 +30,7 @@ header h1 {
 }
 
 header p {
-    color: var(--subtle-text-color); /* UPDATED */
+    color: var(--subtle-text-color);
     margin-top: -15px;
 }
 
@@ -92,7 +94,7 @@ header p {
 .product-card-info p {
     margin: 0;
     font-size: 0.9rem;
-    color: var(--subtle-text-color); /* UPDATED */
+    color: var(--subtle-text-color);
 }
 
 body.dark-mode {
@@ -102,7 +104,7 @@ body.dark-mode {
     --heading-color: #e0e0e0;
     --shadow-color: rgba(0,0,0,0.4);
     --border-color: #444;
-    --subtle-text-color: #aaa; /* NEW: Light subtle text for dark mode */
+    --subtle-text-color: #aaa;
 }
 
 .header-icons {
@@ -156,7 +158,7 @@ body.dark-mode mark {
 
 #result-count {
     font-size: 14px;
-    color: var(--subtle-text-color); /* UPDATED */
+    color: var(--subtle-text-color);
     margin: 0 0 10px 0;
     text-align: right;
 }
@@ -215,17 +217,18 @@ body.dark-mode .view-btn.active {
     padding-left: 20px;
 }
 
+/* --- Layout & Sidebar (Offset / Push Style) --- */
+
 .page-container {
     display: flex;
-    justify-content: center;
     gap: 30px;
-    margin: 0 auto;
-    max-width: 1600px;
+    max-width: 1600px; /* Allows wider grid on large screens */
+    margin: 0 auto;    /* Centers the layout */
 }
 
 .main-content {
     flex-grow: 1;
-    min-width: 0; 
+    min-width: 0; /* Essential for grid to shrink correctly */
 }
 
 #sidebar {
@@ -236,9 +239,11 @@ body.dark-mode .view-btn.active {
     border: 1px solid var(--border-color);
     padding: 20px;
     height: fit-content;
-    display: none;
+    
+    display: none; /* Hidden by default */
 }
 
+/* When sidebar-open is on parent, show the sidebar */
 .page-container.sidebar-open #sidebar {
     display: block;
 }
@@ -287,13 +292,13 @@ body.dark-mode .view-btn.active {
 #recent-list .recent-item-info {
     font-size: 14px;
     line-height: 1.4;
-    min-width: 0;
+    min-width: 0; /* Fixes text collapsing bug */
 }
 
 #recent-list .recent-item-info span {
     display: block;
     font-size: 12px;
-    color: var(--subtle-text-color); /* UPDATED */
+    color: var(--subtle-text-color);
 }
 
 body.dark-mode #recent-list .recent-item-img {
@@ -331,6 +336,7 @@ body.dark-mode #recent-list .recent-item-img {
     padding: 4px 8px;
 }
 
+/* --- Scroll to Top Button --- */
 #scroll-top-btn {
     position: fixed;
     bottom: 20px;
@@ -343,7 +349,7 @@ body.dark-mode #recent-list .recent-item-img {
     
     background-color: var(--heading-color); 
     color: var(--card-bg); 
-    border: none;
+    border: none; /* No border prevents pixelation */
     box-shadow: 0 4px 10px var(--shadow-color);
     cursor: pointer;
     
@@ -354,6 +360,7 @@ body.dark-mode #recent-list .recent-item-img {
     justify-content: center;
 }
 
+/* Sharp SVG-like CSS arrow */
 #scroll-top-btn::before {
     content: '';
     width: 12px;
@@ -364,7 +371,6 @@ body.dark-mode #recent-list .recent-item-img {
 
     transform: translateY(3px) rotate(45deg);
 }
-
 
 #scroll-top-btn:hover {
     transform: translateY(-5px);

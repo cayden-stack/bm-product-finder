@@ -1,15 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize the Supabase Admin Client
-// We use the SERVICE_ROLE_KEY because this is the backend.
-// This bypasses RLS (Row Level Security) so we can write to the DB freely.
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export default async function handler(request, response) {
-  // 1. Handle CORS (Allow your website to talk to this function)
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -18,11 +14,9 @@ export default async function handler(request, response) {
     return response.status(200).end();
   }
 
-  // Temporary hardcoded User ID for testing
   const TEMP_USER_ID = '00000000-0000-0000-0000-000000000000';
 
   try {
-    // --- HANDLE GET REQUEST (Fetch Favorites) ---
     if (request.method === 'GET') {
       const { data, error } = await supabase
         .from('favorites')
@@ -35,7 +29,6 @@ export default async function handler(request, response) {
       return response.status(200).json({ favorites: data });
     }
 
-    // --- HANDLE POST REQUEST (Add Favorite) ---
     if (request.method === 'POST') {
       const { product_id } = request.body;
 
@@ -43,7 +36,6 @@ export default async function handler(request, response) {
         return response.status(400).json({ error: 'Missing product_id' });
       }
 
-      // Using 'upsert' is safer than 'insert'—it won't crash if the favorite already exists
       const { data, error } = await supabase
         .from('favorites')
         .upsert({ 
@@ -58,7 +50,6 @@ export default async function handler(request, response) {
       return response.status(201).json({ success: true, favorite: data[0] });
     }
     
-    // --- HANDLE DELETE REQUEST (Remove Favorite) ---
     if (request.method === 'DELETE') {
         const { product_id } = request.body;
 

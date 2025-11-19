@@ -17,12 +17,13 @@
         <input type="text" id="search-bar" placeholder="Search by name, ID, or tag (e.g., 'blue tips')">
     </header>
 
-<div class="page-container">
+    <div class="page-container">
         
         <aside id="sidebar">
             <h2>Recently Viewed</h2>
             <ul id="recent-list">
-                </ul>
+                
+            </ul>
         </aside>
 
         <div class="main-content">
@@ -31,6 +32,7 @@
 
             <div class="view-controls">
                 <button id="sidebar-toggle-btn" class="view-btn">Recent</button>
+                
                 <div class="sort-controls">
                     <label for="sort-select">Sort by:</label>
                     <select id="sort-select" class="view-btn">
@@ -39,6 +41,7 @@
                         <option value="name-za">Name (Z-A)</option>
                     </select>
                 </div>
+
                 <div class="view-toggle-group">
                     <button id="grid-view-btn" class="view-btn active">Grid</button>
                     <button id="list-view-btn" class="view-btn">List</button>
@@ -51,14 +54,15 @@
     
     <button id="scroll-top-btn" class="theme-btn"></button>
     
-<script>
-    const PUBLIC_SUPABASE_URL = "https://qcsimmvzszsmcrlexopf.supabase.co"; 
-    const PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_npWum_CN-AKv7zIVflFtBA_lZD7t2gI"; 
-</script>
+    <script>
+        const PUBLIC_SUPABASE_URL = "https://mikdpurvhpzjmzsfzyei.supabase.co"; 
+        const PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pa2RwdXJ2aHB6am16c2Z6eWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzNzE5NjIsImV4cCI6MjA3ODk0Nzk2Mn0.ASSi5P8VPjo2zVuGPH_rD8MPn4396zvrSbqigWYUTe4"; 
+    </script>
 
-<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script type="module" src="app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script type="module" src="app.js"></script>
 
 </body>
 </html>
