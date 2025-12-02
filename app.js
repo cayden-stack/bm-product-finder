@@ -1,4 +1,3 @@
-// --- Supabase Setup ---
 const SUPABASE_URL = PUBLIC_SUPABASE_URL; 
 const SUPABASE_ANON_KEY = PUBLIC_SUPABASE_ANON_KEY; 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -7,17 +6,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let fuse;
     let productData = [];
-    let filteredData = []; // Stores the currently filtered list
+    let filteredData = []; 
     let currentSort = 'relevance';
     let showingFavoritesOnly = false;
     let session = null; 
     let isLoginMode = true; 
     
-    // Performance: Pagination Variables
     let currentPage = 1;
-    const itemsPerPage = 40; // Only render 40 at a time to stop lag
+    const itemsPerPage = 40; 
 
-    // --- Elements ---
     const themeToggle = document.getElementById('theme-toggle-btn');
     const searchBar = document.getElementById('search-bar');
     const resultsContainer = document.getElementById('results-container');
@@ -32,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultCountEl = document.getElementById('result-count');
     const favoritesFilterBtn = document.getElementById('favorites-filter-btn');
 
-    // --- Auth Elements ---
     const authBtn = document.getElementById('auth-btn');
     const authModal = document.getElementById('auth-modal');
     const closeAuth = document.getElementById('close-auth');
@@ -45,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const MAX_RECENT = 5;
 
-    // --- Lazy Loading Images ---
     const observerOptions = { root: null, rootMargin: '200px', threshold: 0.1 };
     const lazyImageObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
@@ -59,8 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, observerOptions);
 
-    // --- Infinite Scroll Observer (New Performance Fix) ---
-    // This detects when you hit the bottom of the list and loads 40 more
     const scrollTrigger = document.createElement('div');
     scrollTrigger.className = 'scroll-trigger';
     scrollTrigger.style.height = '20px';
@@ -71,19 +64,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, { root: null, rootMargin: '300px' });
 
-    // --- Init ---
     const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
     setTheme(isDarkMode);
     loadRecentItems();
 
-    // --- Event Listeners ---
     if (themeToggle) themeToggle.addEventListener('click', () => setTheme(!localStorage.getItem('darkMode') === 'enabled'));
     if (sidebarToggleBtn) sidebarToggleBtn.addEventListener('click', () => { 
         if(pageContainer) pageContainer.classList.toggle('sidebar-open'); 
         sidebarToggleBtn.classList.toggle('active'); 
     });
 
-    // --- Auth Logic ---
     if (googleAuthBtn) {
         googleAuthBtn.addEventListener('click', async () => {
             const { error } = await supabase.auth.signInWithOAuth({
@@ -141,7 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Session Monitoring
     supabase.auth.onAuthStateChange((event, _session) => {
         session = _session;
         if (authBtn) authBtn.textContent = session ? 'Logout' : 'Login';
@@ -160,7 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Filter & Sort Listeners ---
     if (favoritesFilterBtn) {
         favoritesFilterBtn.addEventListener('click', () => {
             showingFavoritesOnly = !showingFavoritesOnly;
@@ -207,7 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- Item Click Handler ---
     if (resultsContainer) {
         resultsContainer.addEventListener('click', async (e) => {
             const starBtn = e.target.closest('.favorite-btn');
@@ -221,7 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const productId = starBtn.dataset.productId;
-                // Handle legacy vs new ID structures (SKU vs ID)
                 const product = productData.find(p => (p.id === productId) || (p.product_sku === productId));
                 
                 if (!product) return;
@@ -256,28 +242,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Data Fetching ---
     fetch('products.json')
         .then(response => response.json())
         .then(async data => {
-            // Normalize Data: Ensure every product has an ID
             productData = data.map(p => ({
                 ...p,
-                // Use product_sku as ID if ID is missing
                 id: p.id || p.product_sku || "unknown-id",
                 name: p.name || p.product_name,
                 image_url: p.image_url || p.image
             }));
 
-            // FIX: Updated Fuse Options to search SKU correctly
             const options = { 
                 includeScore: true, 
                 includeMatches: true, 
-                threshold: 0.3, // Stricter threshold for numbers
+                threshold: 0.3, 
                 useExtendedSearch: true,
                 keys: [
                     { name: 'name', weight: 2 },
-                    { name: 'product_sku', weight: 5 }, // Give SKU high priority
+                    { name: 'product_sku', weight: 5 },
                     { name: 'id', weight: 5 }, 
                     { name: 'tags', weight: 1 }
                 ] 
@@ -297,7 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(error => console.error(error));
 
 
-    // --- API Helpers ---
     const API_BASE_URL = '/api/favorites';
 
     async function fetchFavorites() {
@@ -332,43 +313,30 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { return false; }
     }
 
-    // --- Display Logic (With Pagination) ---
-
     function updateDisplay(query = '') {
-        // Reset pagination on new search
         currentPage = 1;
         
-        // 1. Filter
         if (query.length === 0) {
             filteredData = productData;
         } else {
-            // Perform Search
             filteredData = fuse.search(query).map(r => { 
                 const item = r.item;
-                item._matches = r.matches; // Save matches for highlighting
-                item._score = r.score; 
                 return item; 
             });
         }
 
-        // 2. Filter Favorites
         if (showingFavoritesOnly) {
             filteredData = filteredData.filter(p => p.isFavorited);
         }
 
-        // 3. Sort
         filteredData = sortProducts(filteredData, currentSort);
-
-        // 4. Render First Page
         renderInitialBatch(query.length > 0);
     }
 
-    // Render the first batch and setup the scroll observer
     function renderInitialBatch(isSearch) {
         if (!resultsContainer) return;
         resultsContainer.innerHTML = '';
         
-        // Update Count
         if (resultCountEl) {
             if (showingFavoritesOnly) resultCountEl.textContent = `Showing ${filteredData.length} favorites`;
             else if (isSearch) resultCountEl.textContent = `Found ${filteredData.length} matches`;
@@ -380,40 +348,26 @@ document.addEventListener('DOMContentLoaded', () => {
             return; 
         }
 
-        // Append Observer Target for Infinite Scroll
         resultsContainer.appendChild(scrollTrigger);
         scrollObserver.observe(scrollTrigger);
-
-        // Load first page
         loadMoreProducts(); 
     }
 
     function loadMoreProducts() {
-        // Calculate slice indices
         const start = (currentPage - 1) * itemsPerPage;
         const end = currentPage * itemsPerPage;
         
-        // Stop if we reached the end
         if (start >= filteredData.length) {
             scrollObserver.unobserve(scrollTrigger);
             return;
         }
 
         const itemsToRender = filteredData.slice(start, end);
-        
-        // Temporarily remove the scroll trigger to append items before it
         scrollTrigger.remove();
-
-        // Generate HTML
         const cardsHTML = itemsToRender.map(product => createProductCard(product)).join('');
-        
-        // Insert HTML
         resultsContainer.insertAdjacentHTML('beforeend', cardsHTML);
-        
-        // Re-add scroll trigger at the bottom
         resultsContainer.appendChild(scrollTrigger);
 
-        // Activate Lazy Load for new images
         const images = resultsContainer.querySelectorAll('img.lazy-load:not(.loaded)');
         images.forEach(img => lazyImageObserver.observe(img));
 
@@ -422,18 +376,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createProductCard(product) {
         let displayName = product.name;
-        let displayId = product.id || product.product_sku || "N/A";
+        let displayId = product.id || "N/A";
+        const query = searchBar.value.trim();
         
-        // If searching, highlight matches
-        // Note: We only highlight if score is good to avoid messy HTML
-        if (product._matches && product._score < 0.3) {
-             displayName = highlight(product.name, product._matches, 'name') || product.name;
-             displayId = highlight(product.id, product._matches, 'product_sku') || highlight(product.id, product._matches, 'id') || displayId;
+        if (query.length > 0) {
+             displayName = highlight(displayName, query);
+             displayId = highlight(displayId, query);
         }
 
         const starIcon = product.isFavorited ? '★' : '☆';
         const favClass = product.isFavorited ? 'favorited' : '';
-        // Handle missing prices gracefully
         const displayPrice = product.price ? product.price : '';
 
         return `
@@ -450,7 +402,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function sortProducts(array, method) {
-        // Create a shallow copy to avoid mutating the original data randomly
         const sorted = [...array];
         if (method === 'name-az') return sorted.sort((a, b) => a.name.localeCompare(b.name));
         if (method === 'name-za') return sorted.sort((a, b) => b.name.localeCompare(a.name));
@@ -483,34 +434,14 @@ document.addEventListener('DOMContentLoaded', () => {
         loadRecentItems();
     }
 
-    function highlight(text, matches, key) {
-        if (!matches) return text;
-        // Fuse.js matches array structure varies, logic needs to be robust
-        const match = matches.find(m => m.key === key);
-        if (!match) return text;
-
-        const indices = match.indices;
-        if (!indices || indices.length === 0) return text;
+    function highlight(text, query) {
+        if (!query || !text) return text;
         
-        let highlightedText = "";
-        let lastIndex = 0;
+        const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         
-        // Sort indices to be safe
-        indices.sort((a, b) => a[0] - b[0]);
-
-        indices.forEach(pair => {
-            const start = pair[0];
-            const end = pair[1] + 1;
-            
-            // Append text before the match
-            highlightedText += text.substring(lastIndex, start);
-            // Append highlighted match
-            highlightedText += `<mark>${text.substring(start, end)}</mark>`;
-            lastIndex = end;
-        });
-        // Append remaining text
-        highlightedText += text.substring(lastIndex);
-        return highlightedText;
+        const regex = new RegExp(`(${safeQuery})`, 'gi');
+        
+        return text.toString().replace(regex, '<mark>$1</mark>');
     }
 
 });
