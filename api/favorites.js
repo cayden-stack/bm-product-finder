@@ -14,14 +14,12 @@ export default async function handler(request, response) {
     return response.status(200).end();
   }
 
-  // 1. Get the Token
   const authHeader = request.headers.authorization;
   if (!authHeader) {
       return response.status(401).json({ error: 'No authorization header' });
   }
   const token = authHeader.split(' ')[1]; 
 
-  // 2. Verify the User
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
   if (authError || !user) {
