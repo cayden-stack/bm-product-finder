@@ -7,11 +7,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let fuse;
     let productData = [];
+    let filteredData = []; // Stores the currently filtered list
     let currentSort = 'relevance';
     let showingFavoritesOnly = false;
     let session = null; 
     let isLoginMode = true; 
     
+    // Performance: Pagination Variables
+    let currentPage = 1;
+    const itemsPerPage = 40; // Only render 40 at a time to stop lag
+
+    // --- Elements ---
     const themeToggle = document.getElementById('theme-toggle-btn');
     const searchBar = document.getElementById('search-bar');
     const resultsContainer = document.getElementById('results-container');
@@ -31,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const authModal = document.getElementById('auth-modal');
     const closeAuth = document.getElementById('close-auth');
     const submitAuth = document.getElementById('submit-auth');
-    const googleAuthBtn = document.getElementById('google-auth-btn'); // <-- NEW
+    const googleAuthBtn = document.getElementById('google-auth-btn');
     const emailInput = document.getElementById('email');
     const passInput = document.getElementById('password');
     const authTitle = document.getElementById('auth-title');
@@ -39,8 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const MAX_RECENT = 5;
 
-    // --- Lazy Loading ---
-    const observerOptions = { root: null, rootMargin: '0px', threshold: 0.1 };
+    // --- Lazy Loading Images ---
+    const observerOptions = { root: null, rootMargin: '200px', threshold: 0.1 };
     const lazyImageObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -53,25 +59,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, observerOptions);
 
+    // --- Infinite Scroll Observer (New Performance Fix) ---
+    // This detects when you hit the bottom of the list and loads 40 more
+    const scrollTrigger = document.createElement('div');
+    scrollTrigger.className = 'scroll-trigger';
+    scrollTrigger.style.height = '20px';
+    
+    const scrollObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            loadMoreProducts();
+        }
+    }, { root: null, rootMargin: '300px' });
+
     // --- Init ---
     const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
     setTheme(isDarkMode);
     loadRecentItems();
 
-    // --- GOOGLE AUTH LISTENER (Restored) ---
+    // --- Event Listeners ---
+    if (themeToggle) themeToggle.addEventListener('click', () => setTheme(!localStorage.getItem('darkMode') === 'enabled'));
+    if (sidebarToggleBtn) sidebarToggleBtn.addEventListener('click', () => { 
+        if(pageContainer) pageContainer.classList.toggle('sidebar-open'); 
+        sidebarToggleBtn.classList.toggle('active'); 
+    });
+
+    // --- Auth Logic ---
     if (googleAuthBtn) {
         googleAuthBtn.addEventListener('click', async () => {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
-                options: {
-                    redirectTo: window.location.origin
-                }
+                options: { redirectTo: window.location.origin }
             });
             if (error) alert("Google Login Failed: " + error.message);
         });
     }
 
-    // --- Standard Auth Listeners ---
     if (authBtn) {
         authBtn.addEventListener('click', () => {
             if (session) {
@@ -138,22 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-
-    // --- APP EVENT LISTENERS ---
-    if (themeToggle) {
-        themeToggle.addEventListener('click', () => {
-            const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
-            setTheme(!isDarkMode);
-        });
-    }
-
-    if (sidebarToggleBtn) {
-        sidebarToggleBtn.addEventListener('click', () => {
-            if (pageContainer) pageContainer.classList.toggle('sidebar-open');
-            sidebarToggleBtn.classList.toggle('active');
-        });
-    }
-
+    // --- Filter & Sort Listeners ---
     if (favoritesFilterBtn) {
         favoritesFilterBtn.addEventListener('click', () => {
             showingFavoritesOnly = !showingFavoritesOnly;
@@ -200,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- CLICK HANDLER ---
+    // --- Item Click Handler ---
     if (resultsContainer) {
         resultsContainer.addEventListener('click', async (e) => {
             const starBtn = e.target.closest('.favorite-btn');
@@ -214,6 +221,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const productId = starBtn.dataset.productId;
+                // Handle legacy vs new ID structures (SKU vs ID)
+                const product = productData.find(p => (p.id === productId) || (p.product_sku === productId));
+                
+                if (!product) return;
+
                 const isFavorited = starBtn.dataset.favorited === 'true';
                 const newStatus = !isFavorited;
 
@@ -221,8 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 starBtn.dataset.favorited = newStatus;
                 starBtn.innerHTML = newStatus ? '★' : '☆';
 
-                const product = productData.find(p => p.id === productId);
-                if (product) product.isFavorited = newStatus;
+                product.isFavorited = newStatus;
                 
                 if (showingFavoritesOnly && !newStatus) updateDisplay(searchBar.value);
 
@@ -230,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!success) {
                     starBtn.classList.toggle('favorited');
                     starBtn.dataset.favorited = isFavorited;
-                    if (product) product.isFavorited = isFavorited;
+                    product.isFavorited = isFavorited;
                     alert("Error saving favorite");
                 }
                 return;
@@ -239,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = e.target.closest('.product-card');
             if (card) {
                 const productId = card.dataset.id;
-                const product = productData.find(p => p.id === productId);
+                const product = productData.find(p => (p.id === productId) || (p.product_sku === productId));
                 if (product) addRecentItem(product);
             }
         });
@@ -249,8 +260,28 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch('products.json')
         .then(response => response.json())
         .then(async data => {
-            productData = data;
-            const options = { includeScore: true, includeMatches: true, threshold: 0.4, keys: [{ name: 'name', weight: 2 }, { name: 'id', weight: 2 }, { name: 'tags', weight: 1 }] };
+            // Normalize Data: Ensure every product has an ID
+            productData = data.map(p => ({
+                ...p,
+                // Use product_sku as ID if ID is missing
+                id: p.id || p.product_sku || "unknown-id",
+                name: p.name || p.product_name,
+                image_url: p.image_url || p.image
+            }));
+
+            // FIX: Updated Fuse Options to search SKU correctly
+            const options = { 
+                includeScore: true, 
+                includeMatches: true, 
+                threshold: 0.3, // Stricter threshold for numbers
+                useExtendedSearch: true,
+                keys: [
+                    { name: 'name', weight: 2 },
+                    { name: 'product_sku', weight: 5 }, // Give SKU high priority
+                    { name: 'id', weight: 5 }, 
+                    { name: 'tags', weight: 1 }
+                ] 
+            };
             fuse = new Fuse(productData, options);
 
             if (session) {
@@ -301,53 +332,129 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { return false; }
     }
 
-    // --- Display Functions ---
-    function updateDisplay(query = '') {
-        let results;
-        if (query.length === 0) results = productData;
-        else results = fuse.search(query).map(r => { r.item._matches = r.matches; r.item._score = r.score; return r.item; });
+    // --- Display Logic (With Pagination) ---
 
-        if (showingFavoritesOnly) results = results.filter(p => p.isFavorited);
-        results = sortProducts(results, currentSort);
-        displayProducts(results, query.length > 0);
+    function updateDisplay(query = '') {
+        // Reset pagination on new search
+        currentPage = 1;
+        
+        // 1. Filter
+        if (query.length === 0) {
+            filteredData = productData;
+        } else {
+            // Perform Search
+            filteredData = fuse.search(query).map(r => { 
+                const item = r.item;
+                item._matches = r.matches; // Save matches for highlighting
+                item._score = r.score; 
+                return item; 
+            });
+        }
+
+        // 2. Filter Favorites
+        if (showingFavoritesOnly) {
+            filteredData = filteredData.filter(p => p.isFavorited);
+        }
+
+        // 3. Sort
+        filteredData = sortProducts(filteredData, currentSort);
+
+        // 4. Render First Page
+        renderInitialBatch(query.length > 0);
+    }
+
+    // Render the first batch and setup the scroll observer
+    function renderInitialBatch(isSearch) {
+        if (!resultsContainer) return;
+        resultsContainer.innerHTML = '';
+        
+        // Update Count
+        if (resultCountEl) {
+            if (showingFavoritesOnly) resultCountEl.textContent = `Showing ${filteredData.length} favorites`;
+            else if (isSearch) resultCountEl.textContent = `Found ${filteredData.length} matches`;
+            else resultCountEl.textContent = `Showing ${filteredData.length} products`;
+        }
+
+        if (filteredData.length === 0) { 
+            if (resultCountEl) resultCountEl.textContent = 'No matches found'; 
+            return; 
+        }
+
+        // Append Observer Target for Infinite Scroll
+        resultsContainer.appendChild(scrollTrigger);
+        scrollObserver.observe(scrollTrigger);
+
+        // Load first page
+        loadMoreProducts(); 
+    }
+
+    function loadMoreProducts() {
+        // Calculate slice indices
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = currentPage * itemsPerPage;
+        
+        // Stop if we reached the end
+        if (start >= filteredData.length) {
+            scrollObserver.unobserve(scrollTrigger);
+            return;
+        }
+
+        const itemsToRender = filteredData.slice(start, end);
+        
+        // Temporarily remove the scroll trigger to append items before it
+        scrollTrigger.remove();
+
+        // Generate HTML
+        const cardsHTML = itemsToRender.map(product => createProductCard(product)).join('');
+        
+        // Insert HTML
+        resultsContainer.insertAdjacentHTML('beforeend', cardsHTML);
+        
+        // Re-add scroll trigger at the bottom
+        resultsContainer.appendChild(scrollTrigger);
+
+        // Activate Lazy Load for new images
+        const images = resultsContainer.querySelectorAll('img.lazy-load:not(.loaded)');
+        images.forEach(img => lazyImageObserver.observe(img));
+
+        currentPage++;
+    }
+
+    function createProductCard(product) {
+        let displayName = product.name;
+        let displayId = product.id || product.product_sku || "N/A";
+        
+        // If searching, highlight matches
+        // Note: We only highlight if score is good to avoid messy HTML
+        if (product._matches && product._score < 0.3) {
+             displayName = highlight(product.name, product._matches, 'name') || product.name;
+             displayId = highlight(product.id, product._matches, 'product_sku') || highlight(product.id, product._matches, 'id') || displayId;
+        }
+
+        const starIcon = product.isFavorited ? '★' : '☆';
+        const favClass = product.isFavorited ? 'favorited' : '';
+        // Handle missing prices gracefully
+        const displayPrice = product.price ? product.price : '';
+
+        return `
+            <a href="${product.product_link || product.link}" target="_blank" class="product-card" data-id="${product.id}">
+                <button class="favorite-btn ${favClass}" data-product-id="${product.id}" data-favorited="${product.isFavorited}">${starIcon}</button>
+                <img data-src="${product.image_url}" alt="${product.name}" class="lazy-load">
+                <div class="product-card-info">
+                    <h3>${displayName}</h3>
+                    <p class="sku">ID: ${displayId}</p>
+                    <p class="price">${displayPrice}</p>
+                </div>
+            </a>
+        `;
     }
 
     function sortProducts(array, method) {
-        if (method === 'name-az') return array.sort((a, b) => a.name.localeCompare(b.name));
-        if (method === 'name-za') return array.sort((a, b) => b.name.localeCompare(a.name));
-        return array;
-    }
-
-    function displayProducts(products, isSearch) {
-        if (!resultsContainer) return;
-        resultsContainer.innerHTML = '';
-        if (products.length === 0) { if (resultCountEl) resultCountEl.textContent = 'No matches found'; return; }
-
-        if (resultCountEl) {
-            if (showingFavoritesOnly) resultCountEl.textContent = `Showing ${products.length} favorite${products.length !== 1 ? 's' : ''}`;
-            else if (isSearch) resultCountEl.textContent = `Found ${products.length} match${products.length !== 1 ? 'es' : ''}`;
-            else resultCountEl.textContent = `Showing ${products.length} products`;
-        }
-
-        const cardsHTML = products.map(product => {
-            let displayName = product.name;
-            let displayId = product.id;
-            if (isSearch && product._score < 0.1 && !showingFavoritesOnly) {
-                displayName = highlight(product.name, product._matches, 'name');
-                displayId = highlight(product.id, product._matches, 'id');
-            }
-            const starIcon = product.isFavorited ? '★' : '☆';
-            const favClass = product.isFavorited ? 'favorited' : '';
-
-            return `<a href="${product.link}" target="_blank" class="product-card" data-id="${product.id}">
-                <button class="favorite-btn ${favClass}" data-product-id="${product.id}" data-favorited="${product.isFavorited}">${starIcon}</button>
-                <img data-src="${product.image_url}" alt="${product.name}" class="lazy-load">
-                <div class="product-card-info"><h3>${displayName}</h3><p>ID: ${displayId}</p></div>
-            </a>`;
-        });
-        resultsContainer.innerHTML = cardsHTML.join('');
-        const images = resultsContainer.querySelectorAll('img.lazy-load');
-        images.forEach(img => lazyImageObserver.observe(img));
+        // Create a shallow copy to avoid mutating the original data randomly
+        const sorted = [...array];
+        if (method === 'name-az') return sorted.sort((a, b) => a.name.localeCompare(b.name));
+        if (method === 'name-za') return sorted.sort((a, b) => b.name.localeCompare(a.name));
+        return sorted;
     }
 
     function setTheme(isDark) {
@@ -362,7 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (items.length === 0) { recentList.innerHTML = '<li>No recent items.</li>'; return; }
         items.forEach(item => {
             const li = document.createElement('li');
-            li.innerHTML = `<a href="${item.link}" target="_blank"><img src="${item.image_url}" alt="${item.name}" class="recent-item-img"><div class="recent-item-info">${item.name}<span>ID: ${item.id}</span></div></a>`;
+            li.innerHTML = `<a href="${item.product_link || item.link}" target="_blank"><img src="${item.image_url}" alt="${item.name}" class="recent-item-img"><div class="recent-item-info">${item.name}<span>ID: ${item.id}</span></div></a>`;
             recentList.appendChild(li);
         });
     }
@@ -370,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function addRecentItem(product) {
         let items = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
         items = items.filter(i => i.id !== product.id);
-        items.unshift({id: product.id, name: product.name, link: product.link, image_url: product.image_url});
+        items.unshift(product);
         items = items.slice(0, MAX_RECENT);
         localStorage.setItem('recentlyViewed', JSON.stringify(items));
         loadRecentItems();
@@ -378,19 +485,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function highlight(text, matches, key) {
         if (!matches) return text;
-        const keyMatches = matches.find(m => m.key === key);
-        if (!keyMatches) return text;
-        const indices = keyMatches.indices;
+        // Fuse.js matches array structure varies, logic needs to be robust
+        const match = matches.find(m => m.key === key);
+        if (!match) return text;
+
+        const indices = match.indices;
         if (!indices || indices.length === 0) return text;
+        
         let highlightedText = "";
         let lastIndex = 0;
+        
+        // Sort indices to be safe
+        indices.sort((a, b) => a[0] - b[0]);
+
         indices.forEach(pair => {
             const start = pair[0];
             const end = pair[1] + 1;
+            
+            // Append text before the match
             highlightedText += text.substring(lastIndex, start);
+            // Append highlighted match
             highlightedText += `<mark>${text.substring(start, end)}</mark>`;
             lastIndex = end;
         });
+        // Append remaining text
         highlightedText += text.substring(lastIndex);
         return highlightedText;
     }
