@@ -68,7 +68,13 @@ document.addEventListener('DOMContentLoaded', () => {
     setTheme(isDarkMode);
     loadRecentItems();
 
-    if (themeToggle) themeToggle.addEventListener('click', () => setTheme(!localStorage.getItem('darkMode') === 'enabled'));
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            // Check current state directly from the body class for reliability
+            const isCurrentlyDark = document.body.classList.contains('dark-mode');
+            setTheme(!isCurrentlyDark);
+        });
+    }
     if (sidebarToggleBtn) sidebarToggleBtn.addEventListener('click', () => { 
         if(pageContainer) pageContainer.classList.toggle('sidebar-open'); 
         sidebarToggleBtn.classList.toggle('active'); 
