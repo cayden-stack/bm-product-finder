@@ -7,11 +7,19 @@ const supabase = createClient(
 
 export default async function handler(request, response) {
   response.setHeader('Access-Control-Allow-Origin', '*');
-  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (request.method === 'OPTIONS') {
     return response.status(200).end();
+  }
+
+  let body = request.body;
+  if (typeof body === 'string') {
+    try {
+        body = JSON.parse(body);
+    } catch (e) {
+    }
   }
 
   const authHeader = request.headers.authorization;
@@ -41,7 +49,7 @@ export default async function handler(request, response) {
     }
 
     if (request.method === 'POST') {
-      const { product_id } = request.body;
+      const { product_id } = body;
       if (!product_id) return response.status(400).json({ error: 'Missing product_id' });
 
       const { data, error } = await supabase
@@ -58,7 +66,7 @@ export default async function handler(request, response) {
     }
     
     if (request.method === 'DELETE') {
-        const { product_id } = request.body;
+        const { product_id } = body;
         const { error } = await supabase
             .from('favorites')
             .delete()
