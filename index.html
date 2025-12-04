@@ -12,16 +12,21 @@
         <h1>BioMatrix Product Finder</h1>
         <div class="header-icons">
             <button id="auth-btn" class="theme-btn" style="width: auto; padding: 0 15px; font-size: 14px; font-weight: bold; border-radius: 5px;">Login</button>
-            <button id="theme-toggle-btn" class="theme-btn">☀️</button>
+            <button id="theme-toggle-btn" class="theme-btn">🌙</button>
         </div>
         <p>Searching pipettesupplies.com</p>
         <input type="text" id="search-bar" placeholder="Search by name, ID, or tag (e.g., 'blue tips')">
     </header>
 
+    <div id="overlay"></div>
+
     <div class="page-container">
         
         <aside id="sidebar">
-            <h2>Recently Viewed</h2>
+            <div class="sidebar-header">
+                <h2>Recently Viewed</h2>
+                <button id="close-sidebar-btn" class="theme-btn" style="border:none; background:transparent; font-size: 24px; cursor:pointer;">&times;</button>
+            </div>
             <ul id="recent-list"></ul>
         </aside>
 

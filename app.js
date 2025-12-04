@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let session = null; 
     let isLoginMode = true; 
     
-    // Pagination Variables (Performance Fix)
+    // Pagination
     let currentPage = 1;
     const itemsPerPage = 40; 
 
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const listViewBtn = document.getElementById('list-view-btn');
     const recentList = document.getElementById('recent-list');
     
-    // Sidebar Elements
+    // Sidebar Controls
     const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
     const closeSidebarBtn = document.getElementById('close-sidebar-btn');
     const overlay = document.getElementById('overlay');
@@ -78,17 +78,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setTheme(isDarkMode);
     loadRecentItems();
 
-    // --- Listeners ---
-    if (themeToggle) {
-        themeToggle.addEventListener('click', () => {
-            const isCurrentlyDark = document.body.classList.contains('dark-mode');
-            setTheme(!isCurrentlyDark);
-        });
-    }
-
-    // --- NEW SIDEBAR LOGIC (Toggle class on Body) ---
+    // --- SIDEBAR LOGIC (Slide Out) ---
     if (sidebarToggleBtn) {
-        sidebarToggleBtn.addEventListener('click', () => {
+        sidebarToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             document.body.classList.add('sidebar-active');
         });
     }
@@ -105,7 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Auth Logic ---
+    // --- Listeners ---
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            const isCurrentlyDark = document.body.classList.contains('dark-mode');
+            setTheme(!isCurrentlyDark);
+        });
+    }
+
     if (googleAuthBtn) {
         googleAuthBtn.addEventListener('click', async () => {
             const { error } = await supabase.auth.signInWithOAuth({
@@ -169,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (session && productData.length > 0) {
             fetchFavorites().then(favoritesList => {
-                // Ensure we compare Strings to Strings
                 const favoritedProductIds = new Set(favoritesList.map(f => String(f.product_id)));
                 productData.forEach(product => {
                     product.isFavorited = favoritedProductIds.has(String(product.id));
@@ -242,14 +241,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const productId = starBtn.dataset.productId;
-                
-                // FIX: Force string comparison to find the product
+                // Use String Comparison
                 const product = productData.find(p => String(p.id) === String(productId));
                 
-                if (!product) {
-                    console.error("Product not found:", productId);
-                    return;
-                }
+                if (!product) return;
 
                 const isFavorited = starBtn.dataset.favorited === 'true';
                 const newStatus = !isFavorited;
@@ -262,7 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (showingFavoritesOnly && !newStatus) updateDisplay(searchBar.value);
 
-                // Send ID as string to API
                 const success = await toggleFavorite(String(productId), isFavorited);
                 if (!success) {
                     starBtn.classList.toggle('favorited');
@@ -276,18 +270,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = e.target.closest('.product-card');
             if (card) {
                 const productId = card.dataset.id;
-                // FIX: Force string comparison
                 const product = productData.find(p => String(p.id) === String(productId));
                 if (product) addRecentItem(product);
             }
         });
     }
 
-    // --- Data Fetching ---
     fetch('products.json')
         .then(response => response.json())
         .then(async data => {
-            // FIX: Normalize all IDs to Strings immediately
+            // Normalize Data
             productData = data.map(p => ({
                 ...p,
                 id: String(p.id || p.product_sku || "unknown-id"),
@@ -311,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (session) {
                 const favoritesList = await fetchFavorites();
-                // Ensure favorites list uses String IDs
                 const favoritedProductIds = new Set(favoritesList.map(f => String(f.product_id)));
                 productData = productData.map(p => ({ ...p, isFavorited: favoritedProductIds.has(p.id) }));
             } else {
@@ -352,7 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${session.access_token}`
                 },
-                // Ensure we send ID as string
                 body: JSON.stringify({ product_id: String(productId) })
             });
             return response.ok;
