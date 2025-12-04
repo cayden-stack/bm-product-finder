@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const authTitle = document.getElementById('auth-title');
     const switchAuthMode = document.getElementById('switch-auth-mode');
 
-    const MAX_RECENT = 5;
+    const MAX_RECENT = 10;
 
     // --- Lazy Loading ---
     const observerOptions = { root: null, rootMargin: '200px', threshold: 0.1 };
