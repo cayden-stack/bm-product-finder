@@ -14,20 +14,25 @@ export default async function handler(request, response) {
     return response.status(200).end();
   }
 
+  // --- Robust Body Parsing ---
   let body = request.body;
   if (typeof body === 'string') {
     try {
         body = JSON.parse(body);
     } catch (e) {
+        console.error("JSON Parse Error:", e);
+        body = {}; 
     }
+  } else if (!body) {
+      body = {};
   }
 
   const authHeader = request.headers.authorization;
   if (!authHeader) {
       return response.status(401).json({ error: 'No authorization header' });
   }
+  
   const token = authHeader.split(' ')[1]; 
-
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
   if (authError || !user) {
@@ -56,7 +61,7 @@ export default async function handler(request, response) {
         .from('favorites')
         .upsert({ 
             user_id: userID, 
-            product_id: product_id, 
+            product_id: String(product_id), // Force string for mixed types
             saved_at: new Date().toISOString() 
         })
         .select();
@@ -67,11 +72,13 @@ export default async function handler(request, response) {
     
     if (request.method === 'DELETE') {
         const { product_id } = body;
+        if (!product_id) return response.status(400).json({ error: 'Missing product_id' });
+
         const { error } = await supabase
             .from('favorites')
             .delete()
             .eq('user_id', userID)
-            .eq('product_id', product_id);
+            .eq('product_id', String(product_id)); // Force string
 
         if (error) throw error;
         return response.status(200).json({ success: true });
@@ -80,7 +87,7 @@ export default async function handler(request, response) {
     return response.status(405).json({ error: 'Method Not Allowed' });
 
   } catch (error) {
-    console.error('Supabase API Error:', error);
+    console.error('Supabase API Error Details:', error);
     return response.status(500).json({ error: error.message });
   }
 }

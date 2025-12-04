@@ -1,3 +1,4 @@
+// --- Supabase Setup ---
 const SUPABASE_URL = PUBLIC_SUPABASE_URL; 
 const SUPABASE_ANON_KEY = PUBLIC_SUPABASE_ANON_KEY; 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -12,9 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let session = null; 
     let isLoginMode = true; 
     
+    // Pagination Variables (Performance Fix)
     let currentPage = 1;
     const itemsPerPage = 40; 
 
+    // --- Elements ---
     const themeToggle = document.getElementById('theme-toggle-btn');
     const searchBar = document.getElementById('search-bar');
     const resultsContainer = document.getElementById('results-container');
@@ -22,13 +25,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const listViewBtn = document.getElementById('list-view-btn');
     const recentList = document.getElementById('recent-list');
     
+    // Sidebar Elements
     const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
-    const pageContainer = document.querySelector('.page-container');
+    const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+    const overlay = document.getElementById('overlay');
+    
     const sortSelect = document.getElementById('sort-select');
     const scrollTopBtn = document.getElementById('scroll-top-btn');
     const resultCountEl = document.getElementById('result-count');
     const favoritesFilterBtn = document.getElementById('favorites-filter-btn');
 
+    // Auth Elements
     const authBtn = document.getElementById('auth-btn');
     const authModal = document.getElementById('auth-modal');
     const closeAuth = document.getElementById('close-auth');
@@ -41,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const MAX_RECENT = 5;
 
+    // --- Lazy Loading ---
     const observerOptions = { root: null, rootMargin: '200px', threshold: 0.1 };
     const lazyImageObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
@@ -54,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, observerOptions);
 
+    // --- Infinite Scroll ---
     const scrollTrigger = document.createElement('div');
     scrollTrigger.className = 'scroll-trigger';
     scrollTrigger.style.height = '20px';
@@ -64,22 +73,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, { root: null, rootMargin: '300px' });
 
+    // --- Init ---
     const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
     setTheme(isDarkMode);
     loadRecentItems();
 
+    // --- Listeners ---
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
-            // Check current state directly from the body class for reliability
             const isCurrentlyDark = document.body.classList.contains('dark-mode');
             setTheme(!isCurrentlyDark);
         });
     }
-    if (sidebarToggleBtn) sidebarToggleBtn.addEventListener('click', () => { 
-        if(pageContainer) pageContainer.classList.toggle('sidebar-open'); 
-        sidebarToggleBtn.classList.toggle('active'); 
-    });
 
+    // --- NEW SIDEBAR LOGIC (Toggle class on Body) ---
+    if (sidebarToggleBtn) {
+        sidebarToggleBtn.addEventListener('click', () => {
+            document.body.classList.add('sidebar-active');
+        });
+    }
+
+    if (closeSidebarBtn) {
+        closeSidebarBtn.addEventListener('click', () => {
+            document.body.classList.remove('sidebar-active');
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            document.body.classList.remove('sidebar-active');
+        });
+    }
+
+    // --- Auth Logic ---
     if (googleAuthBtn) {
         googleAuthBtn.addEventListener('click', async () => {
             const { error } = await supabase.auth.signInWithOAuth({
@@ -143,9 +169,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (session && productData.length > 0) {
             fetchFavorites().then(favoritesList => {
-                const favoritedProductIds = new Set(favoritesList.map(f => f.product_id));
+                // Ensure we compare Strings to Strings
+                const favoritedProductIds = new Set(favoritesList.map(f => String(f.product_id)));
                 productData.forEach(product => {
-                    product.isFavorited = favoritedProductIds.has(product.id);
+                    product.isFavorited = favoritedProductIds.has(String(product.id));
                 });
                 updateDisplay(searchBar.value);
             });
@@ -201,6 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // --- MAIN CLICK HANDLER ---
     if (resultsContainer) {
         resultsContainer.addEventListener('click', async (e) => {
             const starBtn = e.target.closest('.favorite-btn');
@@ -214,9 +242,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const productId = starBtn.dataset.productId;
-                const product = productData.find(p => (p.id === productId) || (p.product_sku === productId));
                 
-                if (!product) return;
+                // FIX: Force string comparison to find the product
+                const product = productData.find(p => String(p.id) === String(productId));
+                
+                if (!product) {
+                    console.error("Product not found:", productId);
+                    return;
+                }
 
                 const isFavorited = starBtn.dataset.favorited === 'true';
                 const newStatus = !isFavorited;
@@ -229,7 +262,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (showingFavoritesOnly && !newStatus) updateDisplay(searchBar.value);
 
-                const success = await toggleFavorite(productId, isFavorited);
+                // Send ID as string to API
+                const success = await toggleFavorite(String(productId), isFavorited);
                 if (!success) {
                     starBtn.classList.toggle('favorited');
                     starBtn.dataset.favorited = isFavorited;
@@ -242,18 +276,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = e.target.closest('.product-card');
             if (card) {
                 const productId = card.dataset.id;
-                const product = productData.find(p => (p.id === productId) || (p.product_sku === productId));
+                // FIX: Force string comparison
+                const product = productData.find(p => String(p.id) === String(productId));
                 if (product) addRecentItem(product);
             }
         });
     }
 
+    // --- Data Fetching ---
     fetch('products.json')
         .then(response => response.json())
         .then(async data => {
+            // FIX: Normalize all IDs to Strings immediately
             productData = data.map(p => ({
                 ...p,
-                id: p.id || p.product_sku || "unknown-id",
+                id: String(p.id || p.product_sku || "unknown-id"),
                 name: p.name || p.product_name,
                 image_url: p.image_url || p.image
             }));
@@ -274,7 +311,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (session) {
                 const favoritesList = await fetchFavorites();
-                const favoritedProductIds = new Set(favoritesList.map(f => f.product_id));
+                // Ensure favorites list uses String IDs
+                const favoritedProductIds = new Set(favoritesList.map(f => String(f.product_id)));
                 productData = productData.map(p => ({ ...p, isFavorited: favoritedProductIds.has(p.id) }));
             } else {
                 productData = productData.map(p => ({ ...p, isFavorited: false }));
@@ -285,6 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(error => console.error(error));
 
 
+    // --- API Helpers ---
     const API_BASE_URL = '/api/favorites';
 
     async function fetchFavorites() {
@@ -313,11 +352,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${session.access_token}`
                 },
-                body: JSON.stringify({ product_id: productId })
+                // Ensure we send ID as string
+                body: JSON.stringify({ product_id: String(productId) })
             });
             return response.ok;
         } catch (error) { return false; }
     }
+
+    // --- Display Logic ---
 
     function updateDisplay(query = '') {
         currentPage = 1;
@@ -325,10 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (query.length === 0) {
             filteredData = productData;
         } else {
-            filteredData = fuse.search(query).map(r => { 
-                const item = r.item;
-                return item; 
-            });
+            filteredData = fuse.search(query).map(r => r.item);
         }
 
         if (showingFavoritesOnly) {
@@ -415,8 +454,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setTheme(isDark) {
-        if (isDark) { document.body.classList.add('dark-mode'); localStorage.setItem('darkMode', 'enabled'); if(themeToggle) themeToggle.innerHTML = '☀️'; } 
-        else { document.body.classList.remove('dark-mode'); localStorage.setItem('darkMode', 'disabled'); if(themeToggle) themeToggle.innerHTML = '🌙'; }
+        if (isDark) { document.body.classList.add('dark-mode'); localStorage.setItem('darkMode', 'enabled'); if(themeToggle) themeToggle.innerHTML = '🌙'; } 
+        else { document.body.classList.remove('dark-mode'); localStorage.setItem('darkMode', 'disabled'); if(themeToggle) themeToggle.innerHTML = '☀️'; }
     }
     
     function loadRecentItems() {
@@ -433,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function addRecentItem(product) {
         let items = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
-        items = items.filter(i => i.id !== product.id);
+        items = items.filter(i => String(i.id) !== String(product.id));
         items.unshift(product);
         items = items.slice(0, MAX_RECENT);
         localStorage.setItem('recentlyViewed', JSON.stringify(items));
@@ -442,11 +481,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function highlight(text, query) {
         if (!query || !text) return text;
-        
         const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        
         const regex = new RegExp(`(${safeQuery})`, 'gi');
-        
         return text.toString().replace(regex, '<mark>$1</mark>');
     }
 
